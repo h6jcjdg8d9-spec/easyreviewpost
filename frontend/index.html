@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>easyreviewpost</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="page">
+
+    <header class="site-header">
+        <a class="brand" href="#">easyreviewpost</a>
+    </header>
+
+    <!-- ── Floating command center ──────────────────────────────────────────── -->
+    <div class="command-center-wrap">
+        <div class="command-center">
+
+            <!-- Step 1: URL + Date -->
+            <div class="step-col">
+                <div class="step-label">
+                    <span class="step-word">step</span>
+                    <span class="step-num">1</span>
+                </div>
+                <div class="step-box">
+                    <form id="lookup-form">
+                        <div class="url-row">
+                            <input
+                                type="url"
+                                id="business-url"
+                                placeholder="Paste your Google Maps URL…"
+                                required
+                                autocomplete="off"
+                            >
+                            <button type="submit" id="lookup-btn" class="btn-lookup">
+                                <span class="btn-text">Find</span>
+                            </button>
+                        </div>
+                    </form>
+                    <div id="biz-confirmed" class="biz-confirmed hidden">
+                        <svg class="biz-check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span id="biz-name-display" class="biz-name"></span>
+                        <span id="biz-address-display" class="biz-address"></span>
+                    </div>
+                    <div id="lookup-error" class="lookup-error hidden"></div>
+                    <div class="date-pills" id="date-presets">
+                        <button class="date-pill" data-preset="day"     type="button">24h</button>
+                        <button class="date-pill" data-preset="week"    type="button">7 days</button>
+                        <button class="date-pill" data-preset="month"   type="button">30 days</button>
+                        <button class="date-pill" data-preset="quarter" type="button">90 days</button>
+                        <button class="date-pill" data-preset="custom"  type="button">Custom</button>
+                    </div>
+                    <div class="date-custom-wrap hidden" id="date-custom-wrap">
+                        <input type="date" id="date-start">
+                        <span class="date-sep">→</span>
+                        <input type="date" id="date-end">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 2: Color Palette -->
+            <div class="step-col">
+                <div class="step-label">
+                    <span class="step-word">step</span>
+                    <span class="step-num">2</span>
+                </div>
+                <div class="step-box">
+                    <div class="palette-list" id="palette-list"></div>
+                    <div class="inline-custom">
+                        <button class="custom-trigger" id="palette-custom-btn" type="button">Custom…</button>
+                        <div class="palette-custom-wrap hidden" id="palette-custom-wrap">
+                            <input type="text" class="hex-input" id="custom-accent" placeholder="Accent (hex)" maxlength="7">
+                            <input type="text" class="hex-input" id="custom-dark"   placeholder="Primary (hex)" maxlength="7">
+                            <input type="text" class="hex-input" id="custom-light"  placeholder="Background (hex)" maxlength="7">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Style -->
+            <div class="step-col">
+                <div class="step-label">
+                    <span class="step-word">step</span>
+                    <span class="step-num">3</span>
+                </div>
+                <div class="step-box">
+                    <div class="font-list" id="font-list"></div>
+                </div>
+            </div>
+
+            <!-- Step 4: Platform -->
+            <div class="step-col">
+                <div class="step-label">
+                    <span class="step-word">step</span>
+                    <span class="step-num">4</span>
+                </div>
+                <div class="step-box">
+                    <div class="platform-list" id="platform-list"></div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- CTA -->
+        <div class="cta-row">
+            <button type="button" id="fetch-btn" class="btn-generate" disabled>
+                <span class="btn-text">easyreviewpost →</span>
+            </button>
+            <p class="cta-hint" id="cta-hint">Paste your URL first to get started</p>
+        </div>
+    </div>
+
+    <!-- ── Divider ──────────────────────────────────────────────────────────── -->
+    <div class="content-divider"></div>
+
+    <!-- ── Graphics area ───────────────────────────────────────────────────── -->
+    <div class="graphics-area">
+
+        <div id="output-actions" class="output-actions hidden">
+            <button id="download-all-btn" class="btn-download-all">
+                <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+                </svg>
+                Download All
+            </button>
+            <div class="email-form">
+                <input type="email" id="email-input" placeholder="Email address…">
+                <button id="email-send-btn" class="btn-email-send">Send</button>
+            </div>
+            <span id="email-feedback" class="email-feedback hidden"></span>
+        </div>
+
+        <div id="status-msg" class="status-msg hidden"></div>
+        <section id="reviews-grid" class="reviews-grid hidden"></section>
+
+        <div id="output-empty" class="output-empty">
+            <div class="empty-inner">
+                <svg class="empty-illustration" width="192" height="132" viewBox="0 0 192 132" fill="none" aria-hidden="true">
+                    <!-- Stacked card backs -->
+                    <rect x="8" y="24" width="104" height="100" rx="10" fill="#F9FAFB" stroke="#E4E7EF" stroke-width="1.5"/>
+                    <rect x="24" y="13" width="104" height="100" rx="10" fill="white" stroke="#E4E7EF" stroke-width="1.5"/>
+                    <!-- Front card -->
+                    <rect x="40" y="2" width="104" height="100" rx="10" fill="white" stroke="#D1D5DB" stroke-width="1.5"/>
+                    <!-- Stars -->
+                    <text x="54" y="27" font-size="13" fill="#F59E0B" font-family="Arial, sans-serif">★★★★★</text>
+                    <!-- Quote mark -->
+                    <text x="50" y="58" font-size="38" fill="#F3F4F6" font-family="Georgia, serif">"</text>
+                    <!-- Text lines -->
+                    <rect x="54" y="44" width="74" height="5" rx="2.5" fill="#F3F4F6"/>
+                    <rect x="54" y="56" width="62" height="5" rx="2.5" fill="#F3F4F6"/>
+                    <rect x="54" y="68" width="68" height="5" rx="2.5" fill="#F3F4F6"/>
+                    <!-- Divider line -->
+                    <line x1="54" y1="82" x2="132" y2="82" stroke="#E4E7EF" stroke-width="1.5"/>
+                    <!-- Author line -->
+                    <rect x="54" y="91" width="48" height="4" rx="2" fill="#EEF2FF"/>
+                    <!-- Accent bar -->
+                    <rect x="54" y="99" width="36" height="4" rx="2" fill="#C7D2FE"/>
+                    <!-- Sparkles -->
+                    <circle cx="168" cy="14" r="4" fill="#6366F1" opacity="0.30"/>
+                    <circle cx="179" cy="26" r="2.5" fill="#6366F1" opacity="0.18"/>
+                    <circle cx="160" cy="24" r="2" fill="#F59E0B" opacity="0.45"/>
+                    <circle cx="174" cy="8"  r="1.5" fill="#F59E0B" opacity="0.30"/>
+                    <circle cx="20"  cy="8"  r="2.5" fill="#6366F1" opacity="0.22"/>
+                    <circle cx="11"  cy="18" r="1.5" fill="#F59E0B" opacity="0.38"/>
+                </svg>
+                <p class="output-empty-headline">Your graphics will appear here</p>
+                <p class="output-empty-sub">Fill in the steps above and hit the button — we'll pull your reviews and build beautiful shareable images.</p>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- ── Review card template ─────────────────────────────────────────────────── -->
+<template id="review-card-tpl">
+    <article class="review-card">
+        <div class="card-canvas-wrap">
+            <canvas class="preview-canvas"></canvas>
+        </div>
+        <div class="card-body">
+            <div class="card-stars"></div>
+            <p class="card-author"></p>
+            <p class="card-date"></p>
+            <p class="card-text"></p>
+            <div class="card-actions">
+                <button class="btn-primary btn-download">
+                    <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+                    </svg>
+                    Download
+                </button>
+                <button class="btn-secondary btn-copy">Copy Caption</button>
+            </div>
+            <span class="copy-confirm hidden">Copied!</span>
+        </div>
+    </article>
+</template>
+
+<script src="app.js"></script>
+</body>
+</html>
