@@ -1,6 +1,6 @@
 "use strict";
 
-const API = "http://localhost:5001";
+const API = "";
 
 // ── Palette presets ───────────────────────────────────────────────────────────
 const PALETTES = [
