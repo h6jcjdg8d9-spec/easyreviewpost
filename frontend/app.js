@@ -392,31 +392,30 @@ function drawGraphic(canvas, review, businessName) {
     const ctx = canvas.getContext("2d");
     const cx  = W / 2;
 
-    // 1. Radial gradient background — lighter center, darker edges
-    const n   = parseInt(palette.accent.replace("#", ""), 16);
-    const r0  = (n >> 16) & 255, g0 = (n >> 8) & 255, b0 = n & 255;
-    const lR  = Math.min(255, Math.round(r0 + (255 - r0) * 0.22));
-    const lG  = Math.min(255, Math.round(g0 + (255 - g0) * 0.22));
-    const lB  = Math.min(255, Math.round(b0 + (255 - b0) * 0.22));
-    const bgGrad = ctx.createRadialGradient(cx, H * 0.44, 0, cx, H * 0.44, Math.max(W, H) * 0.68);
-    bgGrad.addColorStop(0, `rgb(${lR},${lG},${lB})`);
-    bgGrad.addColorStop(1, `rgb(${Math.round(r0*0.80)},${Math.round(g0*0.80)},${Math.round(b0*0.80)})`);
+    // 1. Sophisticated radial gradient background
+    //    center: +15% lighter → mid: full color → edge: −18% darker
+    const n  = parseInt(palette.accent.replace("#", ""), 16);
+    const r0 = (n >> 16) & 255, g0 = (n >> 8) & 255, b0 = n & 255;
+    const hiR = Math.min(255, Math.round(r0 + (255 - r0) * 0.15));
+    const hiG = Math.min(255, Math.round(g0 + (255 - g0) * 0.15));
+    const hiB = Math.min(255, Math.round(b0 + (255 - b0) * 0.15));
+    const loR = Math.round(r0 * 0.82);
+    const loG = Math.round(g0 * 0.82);
+    const loB = Math.round(b0 * 0.82);
+    const gradRadius = Math.max(W, H) * 0.72;
+    const bgGrad = ctx.createRadialGradient(cx, H * 0.46, 0, cx, H * 0.46, gradRadius);
+    bgGrad.addColorStop(0,    `rgb(${hiR},${hiG},${hiB})`);
+    bgGrad.addColorStop(0.45, `rgb(${r0},${g0},${b0})`);
+    bgGrad.addColorStop(1,    `rgb(${loR},${loG},${loB})`);
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, W, H);
 
-    // 2. Dot grid (2px dots, 15px spacing, white 15% opacity)
-    const dotR       = Math.max(1, Math.round(ref * 0.0037));
-    const dotSpacing = Math.round(ref * 0.028);
-    ctx.save();
-    ctx.fillStyle = "rgba(255,255,255,0.15)";
-    for (let x = dotSpacing / 2; x < W; x += dotSpacing) {
-        for (let y = dotSpacing / 2; y < H; y += dotSpacing) {
-            ctx.beginPath();
-            ctx.arc(Math.round(x), Math.round(y), dotR, 0, Math.PI * 2);
-            ctx.fill();
-        }
-    }
-    ctx.restore();
+    // 2. Inner vignette — draws the eye toward the center
+    const vigGrad = ctx.createRadialGradient(cx, H * 0.5, gradRadius * 0.38, cx, H * 0.5, gradRadius);
+    vigGrad.addColorStop(0, "rgba(0,0,0,0)");
+    vigGrad.addColorStop(1, "rgba(0,0,0,0.28)");
+    ctx.fillStyle = vigGrad;
+    ctx.fillRect(0, 0, W, H);
 
     // 3. Floating white card — dual-layer shadow
     const cardX = Math.round(W * 0.11);
