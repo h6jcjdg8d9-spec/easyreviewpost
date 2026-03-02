@@ -258,55 +258,53 @@ body {
 
 /* ── Step 2: Palette ─────────────────────────────────────────────────────── */
 .palette-list {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px;
-}
-
-.palette-card {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    gap: 5px;
-    padding: 8px 8px 7px;
-    border: 1.5px solid var(--border);
+    gap: 2px;
+}
+
+.palette-row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 5px 7px;
+    border: 1.5px solid transparent;
     border-radius: var(--r-sm);
-    background: var(--surface);
+    background: transparent;
     cursor: pointer;
     transition: all 0.12s;
     font-family: inherit;
     text-align: left;
+    width: 100%;
 }
 
-.palette-card:hover {
-    border-color: rgba(99,102,241,0.35);
+.palette-row:hover {
+    background: rgba(99,102,241,0.05);
 }
 
-.palette-card.active {
+.palette-row.active {
     border-color: var(--accent);
     background: var(--accent-dim);
 }
 
-.palette-card-name {
-    font-size: 0.62rem;
-    font-weight: 600;
-    color: var(--text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    width: 100%;
-}
-
-.palette-card-swatches {
+.palette-row-swatches {
     display: flex;
     gap: 3px;
-    width: 100%;
+    flex-shrink: 0;
 }
 
-.palette-card-swatch {
-    flex: 1;
-    height: 12px;
-    border-radius: 3px;
+.palette-row-swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 5px;
+    display: inline-block;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+}
+
+.palette-row-name {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text);
 }
 
 /* ── Step 3: Style cards ─────────────────────────────────────────────────── */
@@ -436,7 +434,33 @@ body {
 
 .palette-custom-wrap {
     display: flex;
-    gap: 5px;
+    gap: 12px;
+    padding: 6px 4px 2px;
+}
+
+.color-picker-field {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.color-picker-field label {
+    font-size: 0.63rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+input[type="color"] {
+    width: 40px;
+    height: 40px;
+    border: 1.5px solid var(--border);
+    border-radius: 7px;
+    cursor: pointer;
+    padding: 2px;
+    background: var(--surface);
 }
 
 .font-custom-wrap {

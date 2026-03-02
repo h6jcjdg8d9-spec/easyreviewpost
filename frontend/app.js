@@ -4,11 +4,11 @@ const API = "";
 
 // ── Palette presets ───────────────────────────────────────────────────────────
 const PALETTES = [
-    { id: "amber",   name: "Amber & Night",  swatches: ["#F59E0B", "#18181B", "#FAFAF9"], accent: "#F59E0B" },
-    { id: "indigo",  name: "Indigo & Slate", swatches: ["#4F46E5", "#1E293B", "#EEF2FF"], accent: "#4F46E5" },
-    { id: "rose",    name: "Rose & Blush",   swatches: ["#E11D48", "#4C0519", "#FFF1F2"], accent: "#E11D48" },
-    { id: "emerald", name: "Emerald & Ink",  swatches: ["#059669", "#064E3B", "#ECFDF5"], accent: "#059669" },
-    { id: "sky",     name: "Sky & Stone",    swatches: ["#0EA5E9", "#0C4A6E", "#F0F9FF"], accent: "#0EA5E9" },
+    { id: "amber",   name: "Amber & Night",  color1: "#F5A623", color2: "#1A1A2E" },
+    { id: "indigo",  name: "Indigo & Slate", color1: "#4B6BFB", color2: "#2D3748" },
+    { id: "rose",    name: "Rose & Blush",   color1: "#E8476A", color2: "#2D1B2E" },
+    { id: "emerald", name: "Emerald & Ink",  color1: "#10B981", color2: "#064E3B" },
+    { id: "sky",     name: "Sky & Stone",    color1: "#38BDF8", color2: "#1E3A5F" },
 ];
 
 // ── Style presets ─────────────────────────────────────────────────────────────
@@ -137,24 +137,21 @@ function hexToRGB(hex) {
 function isValidHex(h) { return /^#[0-9A-Fa-f]{6}$/.test(h); }
 
 function getCanvasPalette() {
-    let accent = "#F59E0B";
-    if (state.paletteId === "custom" && state.customPalette?.accent && isValidHex(state.customPalette.accent)) {
-        accent = state.customPalette.accent;
+    let color1 = "#F5A623", color2 = "#1A1A2E";
+    if (state.paletteId === "custom" && state.customPalette) {
+        if (isValidHex(state.customPalette.color1)) color1 = state.customPalette.color1;
+        if (isValidHex(state.customPalette.color2)) color2 = state.customPalette.color2;
     } else {
         const pal = PALETTES.find(p => p.id === state.paletteId);
-        if (pal) accent = pal.accent;
+        if (pal) { color1 = pal.color1; color2 = pal.color2; }
     }
-    const { r, g, b } = hexToRGB(accent);
     return {
-        bg:          "#0f0f1a",
-        bgTo:        "#08080f",
-        accent,
+        color1,
+        color2,
         textPrimary: "#FFFFFF",
         textMuted:   "rgba(255,255,255,0.70)",
         textDim:     "rgba(255,255,255,0.25)",
         divider:     "rgba(255,255,255,0.15)",
-        quoteDecor:  `rgba(${r},${g},${b},0.06)`,
-        glowRGB:     `${r},${g},${b}`,
     };
 }
 
@@ -392,25 +389,15 @@ function drawGraphic(canvas, review, businessName) {
     const ctx = canvas.getContext("2d");
     const cx  = W / 2;
 
-    // 1. Sophisticated radial gradient background
-    //    center: +15% lighter → mid: full color → edge: −18% darker
-    const n  = parseInt(palette.accent.replace("#", ""), 16);
-    const r0 = (n >> 16) & 255, g0 = (n >> 8) & 255, b0 = n & 255;
-    const hiR = Math.min(255, Math.round(r0 + (255 - r0) * 0.15));
-    const hiG = Math.min(255, Math.round(g0 + (255 - g0) * 0.15));
-    const hiB = Math.min(255, Math.round(b0 + (255 - b0) * 0.15));
-    const loR = Math.round(r0 * 0.82);
-    const loG = Math.round(g0 * 0.82);
-    const loB = Math.round(b0 * 0.82);
-    const gradRadius = Math.max(W, H) * 0.72;
-    const bgGrad = ctx.createRadialGradient(cx, H * 0.46, 0, cx, H * 0.46, gradRadius);
-    bgGrad.addColorStop(0,    `rgb(${hiR},${hiG},${hiB})`);
-    bgGrad.addColorStop(0.45, `rgb(${r0},${g0},${b0})`);
-    bgGrad.addColorStop(1,    `rgb(${loR},${loG},${loB})`);
+    // 1. 135° diagonal gradient — color1 top-left to color2 bottom-right
+    const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+    bgGrad.addColorStop(0, palette.color1);
+    bgGrad.addColorStop(1, palette.color2);
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, W, H);
 
-    // 2. Inner vignette — draws the eye toward the center
+    // 2. Inner vignette — draws the eye toward the card
+    const gradRadius = Math.max(W, H) * 0.72;
     const vigGrad = ctx.createRadialGradient(cx, H * 0.5, gradRadius * 0.38, cx, H * 0.5, gradRadius);
     vigGrad.addColorStop(0, "rgba(0,0,0,0)");
     vigGrad.addColorStop(1, "rgba(0,0,0,0.28)");
@@ -733,28 +720,29 @@ function initPanel() {
     const paletteList = document.getElementById("palette-list");
 
     PALETTES.forEach(pal => {
-        const card       = document.createElement("button");
-        card.type        = "button";
-        card.className   = "palette-card";
-        card.dataset.pal = pal.id;
+        const row       = document.createElement("button");
+        row.type        = "button";
+        row.className   = "palette-row";
+        row.dataset.pal = pal.id;
 
-        card.innerHTML = `
-            <span class="palette-card-name">${esc(pal.name)}</span>
-            <div class="palette-card-swatches">
-                ${pal.swatches.map(c => `<span class="palette-card-swatch" style="background:${c}"></span>`).join("")}
+        row.innerHTML = `
+            <div class="palette-row-swatches">
+                <span class="palette-row-swatch" style="background:${pal.color1}"></span>
+                <span class="palette-row-swatch" style="background:${pal.color2}"></span>
             </div>
+            <span class="palette-row-name">${esc(pal.name)}</span>
         `;
 
-        card.addEventListener("click", () => {
-            paletteList.querySelectorAll(".palette-card").forEach(r => r.classList.remove("active"));
+        row.addEventListener("click", () => {
+            paletteList.querySelectorAll(".palette-row").forEach(r => r.classList.remove("active"));
             document.getElementById("palette-custom-btn").classList.remove("active");
-            card.classList.add("active");
+            row.classList.add("active");
             state.paletteId = pal.id;
             stepCompleted.step2 = true;
             redrawAll();
         });
 
-        paletteList.appendChild(card);
+        paletteList.appendChild(row);
     });
 
     // Custom palette
@@ -765,23 +753,21 @@ function initPanel() {
         const open = paletteCustomBtn.classList.toggle("active");
         paletteCustomWrap.classList.toggle("hidden", !open);
         if (open) {
-            paletteList.querySelectorAll(".palette-card").forEach(r => r.classList.remove("active"));
+            paletteList.querySelectorAll(".palette-row").forEach(r => r.classList.remove("active"));
             state.paletteId = "custom";
             stepCompleted.step2 = true;
         }
     });
 
     function applyCustomPalette() {
-        const accent = document.getElementById("custom-accent").value.trim();
-        const dark   = document.getElementById("custom-dark").value.trim();
-        const light  = document.getElementById("custom-light").value.trim();
-        if (isValidHex(accent) || isValidHex(dark) || isValidHex(light)) {
-            state.customPalette = { accent, dark, light };
-            redrawAll();
-        }
+        state.customPalette = {
+            color1: document.getElementById("custom-color1").value,
+            color2: document.getElementById("custom-color2").value,
+        };
+        redrawAll();
     }
 
-    ["custom-accent", "custom-dark", "custom-light"].forEach(id =>
+    ["custom-color1", "custom-color2"].forEach(id =>
         document.getElementById(id).addEventListener("input", applyCustomPalette)
     );
 

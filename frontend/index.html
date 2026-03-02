@@ -71,11 +71,16 @@
                 <div class="step-box">
                     <div class="palette-list" id="palette-list"></div>
                     <div class="inline-custom">
-                        <button class="custom-trigger" id="palette-custom-btn" type="button">Custom…</button>
+                        <button class="custom-trigger" id="palette-custom-btn" type="button">+ Custom</button>
                         <div class="palette-custom-wrap hidden" id="palette-custom-wrap">
-                            <input type="text" class="hex-input" id="custom-accent" placeholder="Accent (hex)" maxlength="7">
-                            <input type="text" class="hex-input" id="custom-dark"   placeholder="Primary (hex)" maxlength="7">
-                            <input type="text" class="hex-input" id="custom-light"  placeholder="Background (hex)" maxlength="7">
+                            <div class="color-picker-field">
+                                <label>Color 1</label>
+                                <input type="color" id="custom-color1" value="#F5A623">
+                            </div>
+                            <div class="color-picker-field">
+                                <label>Color 2</label>
+                                <input type="color" id="custom-color2" value="#1A1A2E">
+                            </div>
                         </div>
                     </div>
                 </div>
