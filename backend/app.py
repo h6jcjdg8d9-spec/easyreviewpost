@@ -15,7 +15,14 @@ API_KEY = os.getenv("GOOGLE_API_KEY")
 
 PLACES_BASE = "https://maps.googleapis.com/maps/api/place"
 
-FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend")
+_base = os.path.dirname(__file__)
+_candidate = os.path.join(_base, "..", "frontend")
+FRONTEND_DIR = _candidate if os.path.exists(_candidate) else os.path.join(_base, "frontend")
+
+
+@app.route("/debug")
+def debug():
+    return {"frontend_dir": FRONTEND_DIR, "exists": os.path.exists(FRONTEND_DIR)}
 
 
 @app.route("/")
