@@ -2,7 +2,7 @@ import os
 import re
 import requests
 import anthropic
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from dotenv import load_dotenv
 
@@ -14,6 +14,18 @@ CORS(app)
 API_KEY = os.getenv("GOOGLE_API_KEY")
 
 PLACES_BASE = "https://maps.googleapis.com/maps/api/place"
+
+FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend")
+
+
+@app.route("/")
+def index():
+    return send_from_directory(FRONTEND_DIR, "index.html")
+
+
+@app.route("/<path:filename>")
+def frontend_static(filename):
+    return send_from_directory(FRONTEND_DIR, filename)
 
 
 def extract_place_id_from_url(url):
