@@ -116,14 +116,13 @@ body {
 
 /* ── Step label tagline ──────────────────────────────────────────────────── */
 .step-tagline {
-    font-size: 28px;
-    font-family: 'Pacifico', cursive;
-    font-weight: 400;
+    font-size: 22px;
+    font-family: 'Dancing Script', cursive;
+    font-weight: 600;
     color: #7C3AED;
     line-height: 1.2;
     margin-top: 2px;
-    text-shadow: 2px 3px 6px rgba(124, 58, 237, 0.2);
-    letter-spacing: 0;
+    white-space: nowrap;
 }
 
 /* ── Step 1: URL input ───────────────────────────────────────────────────── */
