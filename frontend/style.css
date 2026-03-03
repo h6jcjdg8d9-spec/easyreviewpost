@@ -58,7 +58,7 @@ body {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 18px;
-    align-items: start;
+    align-items: stretch;
 }
 
 /* ── Step column ─────────────────────────────────────────────────────────── */
@@ -98,21 +98,24 @@ body {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--r);
-    padding: 12px;
+    padding: 10px;
     box-shadow: var(--shadow);
     display: flex;
     flex-direction: column;
-    gap: 9px;
+    gap: 8px;
+    flex: 1;
+}
+
+/* ── Step label tagline ──────────────────────────────────────────────────── */
+.step-tagline {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    line-height: 1.35;
+    margin-top: 3px;
 }
 
 /* ── Step 1: URL input ───────────────────────────────────────────────────── */
-.step1-hint {
-    font-size: 0.72rem;
-    color: var(--text-muted);
-    line-height: 1.4;
-    margin: 0;
-}
-
 .url-row {
     display: flex;
     gap: 6px;
@@ -283,24 +286,26 @@ body {
 .palette-list {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 5px;
+    gap: 6px;
 }
 
 .palette-row {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 7px 6px;
-    border: 1.5px solid transparent;
+    gap: 4px;
+    padding: 7px 4px;
+    border: 1.5px solid var(--border);
     border-radius: var(--r-sm);
-    background: transparent;
+    background: var(--surface);
     cursor: pointer;
     transition: all 0.12s;
     font-family: inherit;
+    overflow: hidden;
 }
 
 .palette-row:hover {
-    background: rgba(99,102,241,0.05);
+    border-color: rgba(99,102,241,0.35);
 }
 
 .palette-row.active {
@@ -310,15 +315,16 @@ body {
 
 .palette-row-swatches {
     display: flex;
-    gap: 4px;
+    gap: 3px;
+    width: 100%;
 }
 
 .palette-row-swatch {
-    width: 22px;
-    height: 22px;
-    border-radius: 5px;
-    display: inline-block;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.18);
+    flex: 1;
+    height: 30px;
+    border-radius: 4px;
+    display: block;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.15);
 }
 
 /* ── Step 3: Style cards ─────────────────────────────────────────────────── */
@@ -421,6 +427,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 6px;
+    margin-top: auto;
+    padding-top: 4px;
 }
 
 .custom-trigger {

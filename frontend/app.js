@@ -8,7 +8,6 @@ const PALETTES = [
     { id: "indigo",  name: "Indigo & Slate", color1: "#4B6BFB", color2: "#2D3748" },
     { id: "rose",    name: "Rose & Blush",   color1: "#E8476A", color2: "#2D1B2E" },
     { id: "emerald", name: "Emerald & Ink",  color1: "#10B981", color2: "#064E3B" },
-    { id: "sky",     name: "Sky & Stone",    color1: "#38BDF8", color2: "#1E3A5F" },
 ];
 
 // ── Style presets ─────────────────────────────────────────────────────────────
