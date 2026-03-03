@@ -304,6 +304,11 @@ async function renderReviews(reviews, businessName) {
     );
     hideStatus();
 
+    gtag('event', 'graphics_generated', {
+        'business_name': businessName,
+        'review_count': reviews.length,
+    });
+
     const tpl = document.getElementById("review-card-tpl");
     reviewsGrid.classList.remove("hidden");
     outputEmpty.classList.add("hidden");
