@@ -184,7 +184,13 @@ function updateCTAState() {
 }
 
 // ── Phase 1: URL lookup ───────────────────────────────────────────────────────
+function sanitizeURL(raw) {
+    // Strip invisible/zero-width Unicode chars that can sneak in via paste
+    return raw.trim().replace(/[\u200B-\u200D\uFEFF\u00A0]/g, "");
+}
+
 async function doLookup(url) {
+    url = sanitizeURL(url);
     if (!url) return;
     setLookupLoading(true);
     lookupError.classList.add("hidden");

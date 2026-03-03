@@ -67,6 +67,7 @@ def lookup_place():
     """
     body = request.get_json(silent=True) or {}
     url = body.get("url", "").strip()
+    print(f"[lookup] received url: {url!r}", flush=True)
 
     if not url:
         return jsonify({"error": "url is required"}), 400
