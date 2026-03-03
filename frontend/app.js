@@ -243,6 +243,11 @@ fetchBtn.addEventListener("click", async () => {
             );
         } else {
             await renderReviews(reviews, currentBusinessName);
+            console.log('graphics_generated fired', { business_name: currentBusinessName, review_count: reviews.length });
+            gtag('event', 'graphics_generated', {
+                'business_name': currentBusinessName,
+                'review_count': reviews.length,
+            });
             setTimeout(() => reviewsGrid.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
         }
     } catch (err) {
@@ -303,11 +308,6 @@ async function renderReviews(reviews, businessName) {
         reviews.map(async (r) => { r._excerpt = await getExcerpt(r.text); })
     );
     hideStatus();
-
-    gtag('event', 'graphics_generated', {
-        'business_name': businessName,
-        'review_count': reviews.length,
-    });
 
     const tpl = document.getElementById("review-card-tpl");
     reviewsGrid.classList.remove("hidden");
