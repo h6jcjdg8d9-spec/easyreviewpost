@@ -106,22 +106,33 @@ body {
     flex: 1;
 }
 
-/* Step 1 box — compact, no extra bottom space, slides down to bottom-align */
+/* Step 1 box — compact, no extra bottom space */
 .step-col:first-child .step-box {
     padding: 8px 9px 5px;
     gap: 6px;
     flex: 0;
-    margin-top: auto;
 }
 
-/* ── Step label tagline ──────────────────────────────────────────────────── */
+/* ── Step tagline wrap (featured box, fills space between label and box) ─── */
+.step-tagline-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--r);
+    box-shadow: var(--shadow);
+    background: var(--surface);
+}
+
 .step-tagline {
     font-size: 26px;
     font-family: 'Fredoka One', cursive;
     font-weight: 400;
+    font-style: italic;
     color: #7C3AED;
     line-height: 1.2;
-    margin-top: 2px;
     text-align: center;
 }
 
