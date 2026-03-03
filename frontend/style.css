@@ -106,13 +106,22 @@ body {
     flex: 1;
 }
 
+/* Step 1 box is tighter — compact and purposeful */
+.step-col:first-child .step-box {
+    padding: 8px 9px 7px;
+    gap: 6px;
+}
+
 /* ── Step label tagline ──────────────────────────────────────────────────── */
 .step-tagline {
-    font-size: 0.7rem;
-    font-weight: 600;
+    font-size: 0.8rem;
+    font-weight: 400;
+    font-style: italic;
+    font-family: Georgia, 'Times New Roman', serif;
     color: var(--text-muted);
-    line-height: 1.35;
-    margin-top: 3px;
+    line-height: 1.4;
+    margin-top: 6px;
+    letter-spacing: 0;
 }
 
 /* ── Step 1: URL input ───────────────────────────────────────────────────── */
