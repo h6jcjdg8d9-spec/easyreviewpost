@@ -56,7 +56,7 @@ body {
 /* ── Command center grid ─────────────────────────────────────────────────── */
 .command-center {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: 1.18fr repeat(3, 0.94fr);
     gap: 18px;
     align-items: stretch;
 }
@@ -106,13 +106,21 @@ body {
     flex: 1;
 }
 
-/* Step 1 box — compact, pushed to bottom to align with boxes 2/3/4 */
+/* Step 1 col — vertically centered, shifted left */
+.step-col:first-child {
+    padding-right: 18px;
+    margin-right: 12px;
+    margin-left: -5px;
+    justify-content: center;
+}
+
+/* Step 1 box — compact */
 .step-col:first-child .step-box {
     padding: 8px 9px 5px;
     gap: 6px;
     flex: 0;
-    margin-top: auto;
 }
+
 
 /* ── Step 1 label row: number + separator + tagline on one line ──────────── */
 .step-label-row {
@@ -829,6 +837,151 @@ input[type="color"] {
     font-size: 0.82rem;
     color: var(--text-muted);
     line-height: 1.65;
+}
+
+/* ── Custom date pill ────────────────────────────────────────────────────── */
+.date-pill-custom {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0.45;
+    cursor: pointer;
+}
+
+.date-pill-custom.unlocked {
+    opacity: 1;
+}
+
+/* ── Inline custom date inputs (shown after unlock) ──────────────────────── */
+.custom-date-inputs {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 5px;
+}
+
+.custom-date-inputs input[type="date"] {
+    flex: 1;
+    min-width: 0;
+    height: 26px;
+    padding: 0 7px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--r-sm);
+    font-size: 0.7rem;
+    font-family: inherit;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+}
+
+.custom-date-inputs input[type="date"]:focus {
+    border-color: var(--accent);
+    background: white;
+}
+
+.date-range-sep {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    flex-shrink: 0;
+}
+
+/* ── Unlock modal ────────────────────────────────────────────────────────── */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+}
+
+.modal-card {
+    background: white;
+    border-radius: 20px;
+    padding: 40px 40px 32px;
+    max-width: 380px;
+    width: calc(100% - 40px);
+    text-align: center;
+    position: relative;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.18), 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.modal-close {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    line-height: 1;
+    color: var(--text-dim);
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 6px;
+    transition: color 0.12s;
+}
+
+.modal-close:hover { color: var(--text); }
+
+.modal-eyebrow {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    margin-bottom: 10px;
+}
+
+.modal-headline {
+    font-size: 1.6rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--text);
+    line-height: 1.15;
+    margin-bottom: 10px;
+}
+
+.modal-sub {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 28px;
+}
+
+.btn-unlock {
+    display: block;
+    width: 100%;
+    height: 48px;
+    background: linear-gradient(135deg, #6366F1, #4F46E5);
+    color: white;
+    border: none;
+    border-radius: 999px;
+    font-size: 1rem;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(99, 102, 241, 0.35);
+    transition: all 0.18s;
+    margin-bottom: 14px;
+}
+
+.btn-unlock:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 22px rgba(99, 102, 241, 0.45);
+}
+
+.btn-unlock:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.modal-fine {
+    font-size: 0.73rem;
+    color: var(--text-dim);
 }
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */

@@ -155,15 +155,59 @@ function getCanvasPalette() {
 }
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
-const lookupForm   = document.getElementById("lookup-form");
-const lookupBtn    = document.getElementById("lookup-btn");
-const fetchBtn     = document.getElementById("fetch-btn");
-const ctaHint      = document.getElementById("cta-hint");
-const lookupError  = document.getElementById("lookup-error");
-const statusMsg    = document.getElementById("status-msg");
-const reviewsGrid  = document.getElementById("reviews-grid");
-const outputEmpty  = document.getElementById("output-empty");
-const outputActions = document.getElementById("output-actions");
+const lookupForm      = document.getElementById("lookup-form");
+const lookupBtn       = document.getElementById("lookup-btn");
+const fetchBtn        = document.getElementById("fetch-btn");
+const ctaHint         = document.getElementById("cta-hint");
+const lookupError     = document.getElementById("lookup-error");
+const statusMsg       = document.getElementById("status-msg");
+const reviewsGrid     = document.getElementById("reviews-grid");
+const outputEmpty     = document.getElementById("output-empty");
+const outputActions   = document.getElementById("output-actions");
+const customPill      = document.getElementById("custom-pill");
+const customDateInputs = document.getElementById("custom-date-inputs");
+
+// ── Cookie helpers ────────────────────────────────────────────────────────────
+function getCookie(name) {
+    const val   = `; ${document.cookie}`;
+    const parts = val.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(";").shift();
+    return null;
+}
+
+function setCookie(name, value, days) {
+    document.cookie = `${name}=${value}; max-age=${days * 86400}; path=/; SameSite=Lax`;
+}
+
+function isCustomUnlocked() { return !!getCookie("erp_custom_unlocked"); }
+
+function applyUnlockState() {
+    customPill.classList.toggle("unlocked", isCustomUnlocked());
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function openUnlockModal()  { document.getElementById("unlock-modal").classList.remove("hidden"); }
+function closeUnlockModal() { document.getElementById("unlock-modal").classList.add("hidden"); }
+
+// ── Stripe return (runs on page load if ?session_id= is present) ──────────────
+async function handleStripeReturn() {
+    const params    = new URLSearchParams(window.location.search);
+    const sessionId = params.get("session_id");
+    if (!sessionId) return;
+
+    // Clean the URL immediately so a refresh doesn't re-fire
+    window.history.replaceState({}, "", window.location.pathname);
+
+    try {
+        const data = await post("/api/unlock-session", { session_id: sessionId });
+        if (data.token) {
+            setCookie("erp_custom_unlocked", data.token, 3650); // ~10 years
+            applyUnlockState();
+        }
+    } catch (e) {
+        console.warn("Stripe session verification failed:", e);
+    }
+}
 
 // ── CTA unlock state ──────────────────────────────────────────────────────────
 function updateCTAState() {
@@ -712,24 +756,50 @@ function esc(str) {
 function initPanel() {
 
     // ── Date presets ───────────────────────────────────────────────────────────
-    const datePresetBtns = document.querySelectorAll("#date-presets .date-pill");
-    const dateCustomWrap = document.getElementById("date-custom-wrap");
+    const monthBtn = document.querySelector('[data-preset="month"]');
 
-    datePresetBtns.forEach(btn => {
-        if (btn.classList.contains("locked")) return;
-        btn.addEventListener("click", () => {
-            datePresetBtns.forEach(b => b.classList.remove("active"));
-            btn.classList.add("active");
-            state.datePreset = btn.dataset.preset;
-            const isCustom = state.datePreset === "custom";
-            dateCustomWrap.classList.toggle("hidden", !isCustom);
-            updateCTAState();
-        });
+    monthBtn.addEventListener("click", () => {
+        monthBtn.classList.add("active");
+        customPill.classList.remove("active");
+        customDateInputs.classList.add("hidden");
+        state.datePreset = "month";
+        updateCTAState();
     });
 
-    // Auto-select 7 days as the default free option
-    const weekBtn = document.querySelector('[data-preset="week"]');
-    if (weekBtn) weekBtn.click();
+    customPill.addEventListener("click", () => {
+        if (!isCustomUnlocked()) { openUnlockModal(); return; }
+        const activating = !customPill.classList.contains("active");
+        customPill.classList.toggle("active", activating);
+        monthBtn.classList.toggle("active", !activating);
+        customDateInputs.classList.toggle("hidden", !activating);
+        state.datePreset = activating ? "custom" : "month";
+        updateCTAState();
+    });
+
+    // ── Unlock modal ────────────────────────────────────────────────────────────
+    document.getElementById("modal-close").addEventListener("click", closeUnlockModal);
+    document.getElementById("unlock-modal").addEventListener("click", (e) => {
+        if (e.target === e.currentTarget) closeUnlockModal();
+    });
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeUnlockModal();
+    });
+
+    document.getElementById("btn-unlock").addEventListener("click", async () => {
+        const btn = document.getElementById("btn-unlock");
+        btn.disabled    = true;
+        btn.textContent = "Redirecting…";
+        try {
+            const data = await post("/api/create-checkout-onetime", {});
+            window.location.href = data.url;
+        } catch {
+            btn.disabled    = false;
+            btn.textContent = "Unlock for $9.99";
+        }
+    });
+
+    // Auto-select 30 days (free default)
+    monthBtn.click();
 
     // ── Compact palette rows ────────────────────────────────────────────────────
     const paletteList = document.getElementById("palette-list");
@@ -863,4 +933,6 @@ function initPanel() {
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 initPanel();
+applyUnlockState();   // reflect cookie immediately (no network call)
+handleStripeReturn(); // async — exchanges ?session_id= for token if returning from Stripe
 updateCTAState();

@@ -1,7 +1,10 @@
 import os
 import re
+import sqlite3
+import secrets
 import requests
 import anthropic
+import stripe
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -18,6 +21,38 @@ PLACES_BASE = "https://maps.googleapis.com/maps/api/place"
 _base = os.path.dirname(os.path.abspath(__file__))
 _sibling = os.path.normpath(os.path.join(_base, "..", "frontend"))
 FRONTEND_DIR = _sibling if os.path.exists(_sibling) else os.path.join(_base, "frontend")
+
+# ── Stripe ─────────────────────────────────────────────────────────────────────
+stripe.api_key          = os.getenv("STRIPE_SECRET_KEY", "")
+STRIPE_WEBHOOK_SECRET   = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+ONETIME_PRICE_CENTS     = 999   # $9.99
+# Foundation placeholder for future subscription tier
+SUBSCRIPTION_PRICE_ID   = os.getenv("STRIPE_SUBSCRIPTION_PRICE_ID", "price_placeholder")
+
+# ── SQLite ─────────────────────────────────────────────────────────────────────
+DB_PATH = os.path.join(_base, "tokens.db")
+
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_db():
+    conn = get_db()
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS custom_range_tokens (
+            id                INTEGER PRIMARY KEY AUTOINCREMENT,
+            token             TEXT UNIQUE NOT NULL,
+            email             TEXT,
+            stripe_session_id TEXT UNIQUE,
+            tier              TEXT DEFAULT 'onetime',
+            created_at        TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+init_db()
 
 
 @app.route("/debug")
@@ -194,6 +229,115 @@ def get_excerpt():
         sentences = re.findall(r"[^.!?]+[.!?]+", text)
         fallback = " ".join(sentences[:2]).strip() if sentences else text
         return jsonify({"excerpt": fallback or text})
+
+
+@app.route("/api/create-checkout-onetime", methods=["POST"])
+def create_checkout_onetime():
+    """Create a Stripe Checkout session for the $9.99 custom-date-range one-time unlock."""
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            mode="payment",
+            line_items=[{
+                "price_data": {
+                    "currency": "usd",
+                    "unit_amount": ONETIME_PRICE_CENTS,
+                    "product_data": {
+                        "name": "Custom Date Range — easyreviewpost",
+                        "description": "Pull reviews from any date range. One-time purchase, yours forever.",
+                    },
+                },
+                "quantity": 1,
+            }],
+            success_url=request.host_url + "?session_id={CHECKOUT_SESSION_ID}",
+            cancel_url=request.host_url,
+        )
+        return jsonify({"url": session.url})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/unlock-session", methods=["POST"])
+def unlock_session():
+    """
+    Called by the frontend after Stripe redirects back with ?session_id=...
+    Verifies payment, generates a token, stores it, and returns it so the
+    frontend can set it as a cookie.
+    """
+    body       = request.get_json(silent=True) or {}
+    session_id = body.get("session_id", "").strip()
+    if not session_id:
+        return jsonify({"error": "session_id required"}), 400
+
+    try:
+        session = stripe.checkout.Session.retrieve(session_id)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+    if session.payment_status != "paid":
+        return jsonify({"error": "Payment not completed"}), 402
+
+    email = (session.customer_details or {}).get("email", "") or ""
+
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT token FROM custom_range_tokens WHERE stripe_session_id = ?",
+            (session_id,)
+        ).fetchone()
+        if row:
+            return jsonify({"token": row["token"]})
+
+        token = secrets.token_urlsafe(32)
+        conn.execute(
+            "INSERT INTO custom_range_tokens (token, email, stripe_session_id, tier) VALUES (?, ?, ?, ?)",
+            (token, email, session_id, "onetime")
+        )
+        conn.commit()
+        return jsonify({"token": token})
+    finally:
+        conn.close()
+
+
+@app.route("/api/stripe-webhook", methods=["POST"])
+def stripe_webhook():
+    """
+    Stripe webhook listener — backup path for checkout.session.completed.
+    Stores email for future automation feature even if unlock-session was
+    already called.
+    """
+    payload    = request.get_data()
+    sig_header = request.headers.get("Stripe-Signature", "")
+
+    try:
+        event = stripe.Webhook.construct_event(payload, sig_header, STRIPE_WEBHOOK_SECRET)
+    except ValueError:
+        return jsonify({"error": "Invalid payload"}), 400
+    except stripe.error.SignatureVerificationError:
+        return jsonify({"error": "Invalid signature"}), 400
+
+    if event["type"] == "checkout.session.completed":
+        sess       = event["data"]["object"]
+        session_id = sess["id"]
+        email      = (sess.get("customer_details") or {}).get("email", "") or ""
+
+        conn = get_db()
+        try:
+            existing = conn.execute(
+                "SELECT id FROM custom_range_tokens WHERE stripe_session_id = ?",
+                (session_id,)
+            ).fetchone()
+            if not existing:
+                token = secrets.token_urlsafe(32)
+                conn.execute(
+                    "INSERT OR IGNORE INTO custom_range_tokens (token, email, stripe_session_id, tier) VALUES (?, ?, ?, ?)",
+                    (token, email, session_id, "onetime")
+                )
+                conn.commit()
+        finally:
+            conn.close()
+
+    return jsonify({"status": "ok"})
 
 
 def _fetch_place_details(place_id, fields, **extra_params):
