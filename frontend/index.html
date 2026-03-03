@@ -35,18 +35,16 @@
                     <span class="step-num">1</span>
                 </div>
                 <div class="step-box">
+                    <p class="step1-hint">Paste your Google Maps URL and we'll pull your latest reviews automatically.</p>
                     <form id="lookup-form">
                         <div class="url-row">
                             <input
                                 type="url"
                                 id="business-url"
-                                placeholder="Paste your Google Maps URL…"
+                                placeholder="maps.google.com/maps/place/…"
                                 required
                                 autocomplete="off"
                             >
-                            <button type="submit" id="lookup-btn" class="btn-lookup">
-                                <span class="btn-text">Find</span>
-                            </button>
                         </div>
                     </form>
                     <div id="biz-confirmed" class="biz-confirmed hidden">
@@ -56,11 +54,11 @@
                     </div>
                     <div id="lookup-error" class="lookup-error hidden"></div>
                     <div class="date-pills" id="date-presets">
-                        <button class="date-pill" data-preset="day"     type="button">24h</button>
                         <button class="date-pill" data-preset="week"    type="button">7 days</button>
-                        <button class="date-pill" data-preset="month"   type="button">30 days</button>
-                        <button class="date-pill" data-preset="quarter" type="button">90 days</button>
-                        <button class="date-pill" data-preset="custom"  type="button">Custom</button>
+                        <div class="date-divider"></div>
+                        <button class="date-pill locked" data-preset="month"   type="button">30 days</button>
+                        <button class="date-pill locked" data-preset="quarter" type="button">90 days</button>
+                        <button class="date-pill locked" data-preset="custom"  type="button">Custom</button>
                     </div>
                     <div class="date-custom-wrap hidden" id="date-custom-wrap">
                         <input type="date" id="date-start">

@@ -685,8 +685,8 @@ function clearReviewsGrid() {
 }
 
 function setLookupLoading(on) {
-    lookupBtn.disabled = on;
-    lookupBtn.querySelector(".btn-text").textContent = on ? "Finding…" : "Find";
+    const input = document.getElementById("business-url");
+    if (input) input.disabled = on;
 }
 
 function setGenerateLoading(on) {
@@ -717,6 +717,7 @@ function initPanel() {
     const dateCustomWrap = document.getElementById("date-custom-wrap");
 
     datePresetBtns.forEach(btn => {
+        if (btn.classList.contains("locked")) return;
         btn.addEventListener("click", () => {
             datePresetBtns.forEach(b => b.classList.remove("active"));
             btn.classList.add("active");
@@ -726,6 +727,10 @@ function initPanel() {
             updateCTAState();
         });
     });
+
+    // Auto-select 7 days as the default free option
+    const weekBtn = document.querySelector('[data-preset="week"]');
+    if (weekBtn) weekBtn.click();
 
     // ── Compact palette rows ────────────────────────────────────────────────────
     const paletteList = document.getElementById("palette-list");
@@ -741,7 +746,6 @@ function initPanel() {
                 <span class="palette-row-swatch" style="background:${pal.color1}"></span>
                 <span class="palette-row-swatch" style="background:${pal.color2}"></span>
             </div>
-            <span class="palette-row-name">${esc(pal.name)}</span>
         `;
 
         row.addEventListener("click", () => {
