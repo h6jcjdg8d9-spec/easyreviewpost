@@ -41,28 +41,28 @@ const STYLES = [
 // ── Platform configs (replaces LAYOUT_CONFIGS) ────────────────────────────────
 const PLATFORM_CONFIGS = {
     instagram: {
-        label: "Instagram",   size: "1080 × 1080",
-        w: 1080, h: 1080,
+        label: "Instagram",   size: "1080 × 1350",
+        w: 1080, h: 1350,
         padR: 0.0815, starsR: 0.195, textR: 0.290,
         divR: 0.778, authorR: 0.833, attrR: 0.884, bizR: 0.951,
     },
     facebook: {
-        label: "Facebook",    size: "1200 × 630",
-        w: 1200, h: 630,
-        padR: 0.120, starsR: 0.180, textR: 0.285,
-        divR: 0.685, authorR: 0.765, attrR: 0.848, bizR: 0.928,
+        label: "Facebook",    size: "1080 × 1350",
+        w: 1080, h: 1350,
+        padR: 0.0815, starsR: 0.195, textR: 0.290,
+        divR: 0.778, authorR: 0.833, attrR: 0.884, bizR: 0.951,
     },
     linkedin: {
-        label: "LinkedIn",    size: "1200 × 627",
-        w: 1200, h: 627,
-        padR: 0.120, starsR: 0.180, textR: 0.285,
-        divR: 0.685, authorR: 0.765, attrR: 0.848, bizR: 0.928,
+        label: "LinkedIn",    size: "1200 × 1200",
+        w: 1200, h: 1200,
+        padR: 0.0815, starsR: 0.195, textR: 0.290,
+        divR: 0.778, authorR: 0.833, attrR: 0.884, bizR: 0.951,
     },
     gpost: {
-        label: "Google Post", size: "720 × 960",
-        w: 720,  h: 960,
-        padR: 0.0833, starsR: 0.188, textR: 0.270,
-        divR: 0.772, authorR: 0.830, attrR: 0.878, bizR: 0.938,
+        label: "Google Post", size: "720 × 720",
+        w: 720,  h: 720,
+        padR: 0.0815, starsR: 0.195, textR: 0.290,
+        divR: 0.778, authorR: 0.833, attrR: 0.884, bizR: 0.951,
     },
 };
 
