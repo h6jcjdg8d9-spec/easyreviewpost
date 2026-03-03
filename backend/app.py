@@ -299,7 +299,7 @@ def unlock_session():
         conn.close()
 
 
-@app.route("/api/stripe-webhook", methods=["POST"])
+@app.route("/api/stripe-webhook", methods=["POST"], strict_slashes=False)
 def stripe_webhook():
     """
     Stripe webhook listener — backup path for checkout.session.completed.
