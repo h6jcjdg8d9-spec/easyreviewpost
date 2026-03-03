@@ -340,6 +340,12 @@ def stripe_webhook():
     return jsonify({"status": "ok"})
 
 
+@app.route("/api/stripe-webhook/", methods=["POST"])
+def stripe_webhook_slash():
+    """Catch trailing-slash variant that Render's routing layer may redirect to."""
+    return stripe_webhook()
+
+
 def _fetch_place_details(place_id, fields, **extra_params):
     """Shared helper for Place Details API calls. Returns the 'result' dict or None."""
     params = {"place_id": place_id, "fields": fields, "key": API_KEY, **extra_params}
