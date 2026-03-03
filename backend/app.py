@@ -28,6 +28,9 @@ STRIPE_WEBHOOK_SECRET   = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 ONETIME_PRICE_CENTS     = 999   # $9.99
 # Foundation placeholder for future subscription tier
 SUBSCRIPTION_PRICE_ID   = os.getenv("STRIPE_SUBSCRIPTION_PRICE_ID", "price_placeholder")
+# Canonical public URL — set SITE_URL=https://easyreviewpost.com in Render env vars.
+# Falls back to request.host_url inside the route if not set.
+SITE_URL                = os.getenv("SITE_URL", "").rstrip("/")
 
 # ── SQLite ─────────────────────────────────────────────────────────────────────
 DB_PATH = os.path.join(_base, "tokens.db")
@@ -249,8 +252,8 @@ def create_checkout_onetime():
                 },
                 "quantity": 1,
             }],
-            success_url=request.host_url + "?session_id={CHECKOUT_SESSION_ID}",
-            cancel_url=request.host_url,
+            success_url=f"{SITE_URL or request.host_url.rstrip('/')}/?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{SITE_URL or request.host_url.rstrip('/')}/",
         )
         return jsonify({"url": session.url})
     except Exception as e:
