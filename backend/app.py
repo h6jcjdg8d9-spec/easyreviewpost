@@ -33,7 +33,7 @@ SUBSCRIPTION_PRICE_ID   = os.getenv("STRIPE_SUBSCRIPTION_PRICE_ID", "price_place
 SITE_URL                = os.getenv("SITE_URL", "").rstrip("/")
 
 # ── SQLite ─────────────────────────────────────────────────────────────────────
-DB_PATH = os.path.join(_base, "tokens.db")
+DB_PATH = os.getenv("DB_PATH", os.path.join("/tmp", "tokens.db"))
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
