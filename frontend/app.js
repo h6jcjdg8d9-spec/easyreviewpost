@@ -195,14 +195,13 @@ async function handleStripeReturn() {
     const sessionId = params.get("session_id");
     if (!sessionId) return;
 
-    // Clean the URL immediately so a refresh doesn't re-fire
-    window.history.replaceState({}, "", window.location.pathname);
-
     try {
         const data = await post("/api/unlock-session", { session_id: sessionId });
         if (data.token) {
             setCookie("erp_custom_unlocked", data.token, 3650); // ~10 years
             applyUnlockState();
+            // Clean URL only after confirmed success so a refresh can retry on failure
+            window.history.replaceState({}, "", window.location.pathname);
         }
     } catch (e) {
         console.warn("Stripe session verification failed:", e);
