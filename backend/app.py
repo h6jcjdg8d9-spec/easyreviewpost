@@ -75,27 +75,35 @@ def frontend_static(filename):
 
 def extract_place_id_from_url(url):
     """
-    Google Maps URLs embed the Place ID after '!1s'.
-    Handles both formats:
-      ChIJ... e.g. !1sChIJN1t_tDeuEmsRUsoyG83frY4!
-      0x...   e.g. !1s0x89c6c730e96b409f:0xde3b3b0d9f48a713!
+    Only returns ChIJ-format place IDs, which the Places API accepts.
+    Hex-format IDs (0x...) are ignored — we handle those via coord search.
     """
-    match = re.search(r"!1s([^!&]+)", url)
+    match = re.search(r"!1s(ChIJ[^!&]+)", url)
     return match.group(1) if match else None
 
 
 def extract_query_from_url(url):
-    """
-    Pull the human-readable business name out of a Google Maps URL
-    so we can fall back to a text search.
-    e.g. /maps/place/Joe%27s+Pizza/@...
-    """
+    """Pull the human-readable business name from a Google Maps URL."""
     match = re.search(r"/maps/place/([^/@?]+)", url)
     if match:
-        raw = match.group(1)
-        # URL-decode + replace + with space
-        return requests.utils.unquote(raw).replace("+", " ")
+        return requests.utils.unquote(match.group(1)).replace("+", " ")
     return None
+
+
+def extract_coords_from_url(url):
+    """
+    Extract lat/lng from a Google Maps URL.
+    Tries the precise !3d...!4d... data params first, then falls back
+    to the @lat,lng viewport coords.
+    """
+    lat_m = re.search(r"!3d(-?\d+\.\d+)", url)
+    lng_m = re.search(r"!4d(-?\d+\.\d+)", url)
+    if lat_m and lng_m:
+        return float(lat_m.group(1)), float(lng_m.group(1))
+    m = re.search(r"@(-?\d+\.\d+),(-?\d+\.\d+)", url)
+    if m:
+        return float(m.group(1)), float(m.group(2))
+    return None, None
 
 
 @app.route("/api/lookup", methods=["POST"])
@@ -111,14 +119,13 @@ def lookup_place():
     if not url:
         return jsonify({"error": "url is required"}), 400
 
-    # --- Attempt 1: extract Place ID directly from the URL ---
+    # --- Attempt 1: ChIJ place ID embedded directly in the URL ---
     place_id = extract_place_id_from_url(url)
-    print(f"[lookup] extracted place_id: {place_id!r}", flush=True)
+    print(f"[lookup] ChIJ place_id: {place_id!r}", flush=True)
 
     if place_id:
-        # Validate and enrich with a lightweight Details call
         details = _fetch_place_details(place_id, fields="name,formatted_address,rating,user_ratings_total")
-        print(f"[lookup] place_id={place_id!r} -> {details}", flush=True)
+        print(f"[lookup] details: {details}", flush=True)
         if details:
             return jsonify({
                 "place_id": place_id,
@@ -128,30 +135,28 @@ def lookup_place():
                 "total_reviews": details.get("user_ratings_total", 0),
             })
 
-    # --- Attempt 2: text search using the business name in the URL ---
+    # --- Attempt 2: coordinate + name search (handles hex-format URLs) ---
     query = extract_query_from_url(url)
-    print(f"[lookup] no place_id in URL, falling back to text search query: {query!r}", flush=True)
-    if not query:
-        return jsonify({"error": "Could not parse business name from URL. Try pasting the full Google Maps URL."}), 400
+    lat, lng = extract_coords_from_url(url)
+    print(f"[lookup] coord search: query={query!r} lat={lat} lng={lng}", flush=True)
 
-    resp = requests.get(
-        f"{PLACES_BASE}/findplacefromtext/json",
-        params={
+    if query:
+        params = {
             "input": query,
             "inputtype": "textquery",
             "fields": "place_id,name,formatted_address,rating,user_ratings_total",
             "key": API_KEY,
-        },
-        timeout=10,
-    )
-    data = resp.json()
-    print(f"[lookup] text search status={data.get('status')!r} candidates={[(c.get('name','?'), c.get('formatted_address','?')) for c in data.get('candidates', [])]}", flush=True)
+        }
+        if lat is not None and lng is not None:
+            params["locationbias"] = f"point:{lat},{lng}"
 
-    if data.get("status") != "OK" or not data.get("candidates"):
-        return jsonify({"error": f"Business not found (status: {data.get('status')}). Try a different URL."}), 404
+        resp = requests.get(f"{PLACES_BASE}/findplacefromtext/json", params=params, timeout=10)
+        data = resp.json()
+        print(f"[lookup] findplace status={data.get('status')!r} candidates={[(c.get('name','?'), c.get('formatted_address','?')) for c in data.get('candidates', [])]}", flush=True)
 
-    candidate = data["candidates"][0]
-    return jsonify({
+        if data.get("status") == "OK" and data.get("candidates"):
+            candidate = data["candidates"][0]
+            return jsonify({
         "place_id": candidate["place_id"],
         "name": candidate.get("name", ""),
         "address": candidate.get("formatted_address", ""),
