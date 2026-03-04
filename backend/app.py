@@ -145,7 +145,7 @@ def lookup_place():
         timeout=10,
     )
     data = resp.json()
-    print(f"[lookup] text search status={data.get('status')!r} candidates={[c.get('name') + ' / ' + c.get('formatted_address','') for c in data.get('candidates', [])]}", flush=True)
+    print(f"[lookup] text search status={data.get('status')!r} candidates={[(c.get('name','?'), c.get('formatted_address','?')) for c in data.get('candidates', [])]}", flush=True)
 
     if data.get("status") != "OK" or not data.get("candidates"):
         return jsonify({"error": f"Business not found (status: {data.get('status')}). Try a different URL."}), 404
