@@ -75,11 +75,12 @@ def frontend_static(filename):
 
 def extract_place_id_from_url(url):
     """
-    Google Maps URLs sometimes embed the Place ID directly.
-    It appears after '!1s' and starts with 'ChIJ'.
-    e.g. ...!1sChIJN1t_tDeuEmsRUsoyG83frY4!2m2!...
+    Google Maps URLs embed the Place ID after '!1s'.
+    Handles both formats:
+      ChIJ... e.g. !1sChIJN1t_tDeuEmsRUsoyG83frY4!
+      0x...   e.g. !1s0x89c6c730e96b409f:0xde3b3b0d9f48a713!
     """
-    match = re.search(r"!1s(ChIJ[^!&]+)", url)
+    match = re.search(r"!1s([^!&]+)", url)
     return match.group(1) if match else None
 
 
