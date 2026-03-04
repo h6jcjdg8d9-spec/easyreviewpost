@@ -112,10 +112,12 @@ def lookup_place():
 
     # --- Attempt 1: extract Place ID directly from the URL ---
     place_id = extract_place_id_from_url(url)
+    print(f"[lookup] extracted place_id: {place_id!r}", flush=True)
 
     if place_id:
         # Validate and enrich with a lightweight Details call
         details = _fetch_place_details(place_id, fields="name,formatted_address,rating,user_ratings_total")
+        print(f"[lookup] place_id={place_id!r} -> name={details.get('name')!r} address={details.get('formatted_address')!r}", flush=True)
         if details:
             return jsonify({
                 "place_id": place_id,
@@ -127,6 +129,7 @@ def lookup_place():
 
     # --- Attempt 2: text search using the business name in the URL ---
     query = extract_query_from_url(url)
+    print(f"[lookup] no place_id in URL, falling back to text search query: {query!r}", flush=True)
     if not query:
         return jsonify({"error": "Could not parse business name from URL. Try pasting the full Google Maps URL."}), 400
 
@@ -141,6 +144,7 @@ def lookup_place():
         timeout=10,
     )
     data = resp.json()
+    print(f"[lookup] text search status={data.get('status')!r} candidates={[c.get('name') + ' / ' + c.get('formatted_address','') for c in data.get('candidates', [])]}", flush=True)
 
     if data.get("status") != "OK" or not data.get("candidates"):
         return jsonify({"error": f"Business not found (status: {data.get('status')}). Try a different URL."}), 404
