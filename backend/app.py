@@ -187,6 +187,7 @@ def get_reviews():
         }
         for r in details.get("reviews", [])
         if r.get("text", "").strip()                # skip reviews with no text
+        and r.get("rating") == 5                    # only 5-star reviews
     ]
 
     return jsonify({

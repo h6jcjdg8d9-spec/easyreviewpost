@@ -286,8 +286,8 @@ fetchBtn.addEventListener("click", async () => {
         if (reviews.length === 0) {
             showStatus(
                 (start || end)
-                    ? "No reviews found in that date range. Google's public API returns only the 5 most recent reviews."
-                    : "No text reviews found for this business."
+                    ? "No 5-star reviews found in this date range — try expanding your range."
+                    : "No 5-star reviews found for this business."
             );
         } else {
             await renderReviews(reviews, currentBusinessName);
