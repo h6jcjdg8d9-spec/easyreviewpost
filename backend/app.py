@@ -177,6 +177,9 @@ def get_reviews():
     if details is None:
         return jsonify({"error": "Could not fetch reviews from Google."}), 502
 
+    raw = details.get("reviews", [])
+    print(f"[reviews] total_from_google={len(raw)}, ratings={[r.get('rating') for r in raw]}", flush=True)
+
     reviews = [
         {
             "author": r.get("author_name", "Anonymous"),
@@ -185,10 +188,10 @@ def get_reviews():
             "timestamp": r.get("time", 0),          # Unix epoch — used for date filtering
             "relative_time": r.get("relative_time_description", ""),
         }
-        for r in details.get("reviews", [])
-        if r.get("text", "").strip()                # skip reviews with no text
-        and r.get("rating") == 5                    # only 5-star reviews
+        for r in raw
+        if r.get("text", "").strip() and r.get("rating") == 5
     ]
+    print(f"[reviews] after_5star_filter={len(reviews)}", flush=True)
 
     return jsonify({
         "name": details.get("name", ""),
