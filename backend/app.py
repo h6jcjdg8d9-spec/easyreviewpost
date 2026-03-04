@@ -118,7 +118,7 @@ def lookup_place():
     if place_id:
         # Validate and enrich with a lightweight Details call
         details = _fetch_place_details(place_id, fields="name,formatted_address,rating,user_ratings_total")
-        print(f"[lookup] place_id={place_id!r} -> name={details.get('name')!r} address={details.get('formatted_address')!r}", flush=True)
+        print(f"[lookup] place_id={place_id!r} -> {details}", flush=True)
         if details:
             return jsonify({
                 "place_id": place_id,
