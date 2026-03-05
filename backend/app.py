@@ -55,7 +55,11 @@ def init_db():
     conn.commit()
     conn.close()
 
-init_db()
+@app.before_request
+def ensure_db():
+    """Initialize DB on first request instead of at import time."""
+    app.before_request_funcs[None].remove(ensure_db)
+    init_db()
 
 
 @app.route("/debug")
