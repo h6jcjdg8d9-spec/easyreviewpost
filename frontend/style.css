@@ -57,7 +57,7 @@ body {
     font-family: 'Fredoka One', cursive;
     font-weight: 400;
     font-style: italic;
-    color: #7C3AED;
+    color: var(--text-dim);
     line-height: 1;
 }
 
