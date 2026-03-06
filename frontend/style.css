@@ -1133,13 +1133,19 @@ input[type="color"] {
         font-size: 18px;
     }
 
-    /* Step boxes: more internal padding */
+    /* Step boxes: more internal padding + side breathing room */
     .step-box {
         padding: 14px 12px;
+        margin-left: 16px;
+        margin-right: 16px;
+        width: auto;
     }
 
     .step-col:first-child .step-box {
         padding: 10px 12px 8px;
+        margin-left: 16px;
+        margin-right: 16px;
+        width: auto;
     }
 
     /* Color swatches: inset from edges */
