@@ -35,13 +35,30 @@ body {
     height: 52px;
     display: flex;
     align-items: center;
+    justify-content: space-between;
     padding: 0 32px;
 }
 
-.brand-stack {
+.brand-row {
     display: flex;
-    flex-direction: column;
-    gap: 0.38em;
+    align-items: center;
+    gap: 12px;
+}
+
+.brand-sep {
+    width: 1px;
+    height: 16px;
+    background: var(--border);
+    flex-shrink: 0;
+}
+
+.brand-tagline {
+    font-size: 1rem;
+    font-family: 'Fredoka One', cursive;
+    font-weight: 400;
+    font-style: italic;
+    color: #7C3AED;
+    line-height: 1;
 }
 
 .brand {
@@ -70,7 +87,7 @@ body {
 
 /* ── Command center wrapper ──────────────────────────────────────────────── */
 .command-center-wrap {
-    padding: 4px 32px 32px;
+    padding: 40px 32px 32px;
     max-width: 1320px;
     margin: 0 auto;
 }
