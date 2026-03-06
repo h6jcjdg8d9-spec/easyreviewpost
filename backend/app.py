@@ -77,96 +77,36 @@ def frontend_static(filename):
     return send_from_directory(FRONTEND_DIR, filename)
 
 
-def extract_place_id_from_url(url):
+@app.route("/api/search", methods=["GET"])
+def search_places():
     """
-    Only returns ChIJ-format place IDs, which the Places API accepts.
-    Hex-format IDs (0x...) are ignored — we handle those via coord search.
+    Accept a query string and return up to 5 matching businesses.
+    Return: { results: [{ place_id, name, address }] }
     """
-    match = re.search(r"!1s(ChIJ[^!&]+)", url)
-    return match.group(1) if match else None
+    query = request.args.get("query", "").strip()
+    if not query or len(query) < 3:
+        return jsonify({"results": []})
 
+    params = {
+        "query": query,
+        "key": API_KEY,
+    }
+    resp = requests.get(f"{PLACES_BASE}/textsearch/json", params=params, timeout=10)
+    data = resp.json()
+    print(f"[search] query={query!r} status={data.get('status')!r} count={len(data.get('results', []))}", flush=True)
 
-def extract_query_from_url(url):
-    """Pull the human-readable business name from a Google Maps URL."""
-    match = re.search(r"/maps/place/([^/@?]+)", url)
-    if match:
-        return requests.utils.unquote(match.group(1)).replace("+", " ")
-    return None
+    if data.get("status") not in ("OK", "ZERO_RESULTS"):
+        return jsonify({"error": "Search failed"}), 502
 
-
-def extract_coords_from_url(url):
-    """
-    Extract lat/lng from a Google Maps URL.
-    Tries the precise !3d...!4d... data params first, then falls back
-    to the @lat,lng viewport coords.
-    """
-    lat_m = re.search(r"!3d(-?\d+\.\d+)", url)
-    lng_m = re.search(r"!4d(-?\d+\.\d+)", url)
-    if lat_m and lng_m:
-        return float(lat_m.group(1)), float(lng_m.group(1))
-    m = re.search(r"@(-?\d+\.\d+),(-?\d+\.\d+)", url)
-    if m:
-        return float(m.group(1)), float(m.group(2))
-    return None, None
-
-
-@app.route("/api/lookup", methods=["POST"])
-def lookup_place():
-    """
-    Accept a Google Business Profile / Maps URL.
-    Return: { place_id, name, address, total_reviews, overall_rating }
-    """
-    body = request.get_json(silent=True) or {}
-    url = body.get("url", "").strip()
-    print(f"[lookup] received url: {url!r}", flush=True)
-
-    if not url:
-        return jsonify({"error": "url is required"}), 400
-
-    # --- Attempt 1: ChIJ place ID embedded directly in the URL ---
-    place_id = extract_place_id_from_url(url)
-    print(f"[lookup] ChIJ place_id: {place_id!r}", flush=True)
-
-    if place_id:
-        details = _fetch_place_details(place_id, fields="name,formatted_address,rating,user_ratings_total")
-        print(f"[lookup] details: {details}", flush=True)
-        if details:
-            return jsonify({
-                "place_id": place_id,
-                "name": details.get("name", ""),
-                "address": details.get("formatted_address", ""),
-                "overall_rating": details.get("rating", 0),
-                "total_reviews": details.get("user_ratings_total", 0),
-            })
-
-    # --- Attempt 2: coordinate + name search (handles hex-format URLs) ---
-    query = extract_query_from_url(url)
-    lat, lng = extract_coords_from_url(url)
-    print(f"[lookup] coord search: query={query!r} lat={lat} lng={lng}", flush=True)
-
-    if query:
-        params = {
-            "input": query,
-            "inputtype": "textquery",
-            "fields": "place_id,name,formatted_address,rating,user_ratings_total",
-            "key": API_KEY,
+    results = [
+        {
+            "place_id": r["place_id"],
+            "name": r.get("name", ""),
+            "address": r.get("formatted_address", ""),
         }
-        if lat is not None and lng is not None:
-            params["locationbias"] = f"point:{lat},{lng}"
-
-        resp = requests.get(f"{PLACES_BASE}/findplacefromtext/json", params=params, timeout=10)
-        data = resp.json()
-        print(f"[lookup] findplace status={data.get('status')!r} candidates={[(c.get('name','?'), c.get('formatted_address','?')) for c in data.get('candidates', [])]}", flush=True)
-
-        if data.get("status") == "OK" and data.get("candidates"):
-            candidate = data["candidates"][0]
-            return jsonify({
-        "place_id": candidate["place_id"],
-        "name": candidate.get("name", ""),
-        "address": candidate.get("formatted_address", ""),
-        "overall_rating": candidate.get("rating", 0),
-        "total_reviews": candidate.get("user_ratings_total", 0),
-    })
+        for r in data.get("results", [])[:5]
+    ]
+    return jsonify({"results": results})
 
 
 @app.route("/api/reviews", methods=["POST"])

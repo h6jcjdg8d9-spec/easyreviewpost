@@ -45,17 +45,15 @@
                     </div>
                 </div>
                 <div class="step-box">
-                    <form id="lookup-form">
-                        <div class="url-row">
-                            <input
-                                type="url"
-                                id="business-url"
-                                placeholder="maps.google.com/maps/place/…"
-                                required
-                                autocomplete="off"
-                            >
-                        </div>
-                    </form>
+                    <div class="search-wrap">
+                        <input
+                            type="text"
+                            id="business-search"
+                            placeholder="Search your business name..."
+                            autocomplete="off"
+                        >
+                        <ul class="search-dropdown hidden" id="search-dropdown"></ul>
+                    </div>
                     <div id="biz-confirmed" class="biz-confirmed hidden">
                         <svg class="biz-check-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
                         <span id="biz-name-display" class="biz-name"></span>

@@ -155,17 +155,17 @@ function getCanvasPalette() {
 }
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
-const lookupForm      = document.getElementById("lookup-form");
-const lookupBtn       = document.getElementById("lookup-btn");
-const fetchBtn        = document.getElementById("fetch-btn");
-const ctaHint         = document.getElementById("cta-hint");
-const lookupError     = document.getElementById("lookup-error");
-const statusMsg       = document.getElementById("status-msg");
-const reviewsGrid     = document.getElementById("reviews-grid");
-const outputEmpty     = document.getElementById("output-empty");
-const outputActions   = document.getElementById("output-actions");
-const customPill      = document.getElementById("custom-pill");
+const fetchBtn         = document.getElementById("fetch-btn");
+const ctaHint          = document.getElementById("cta-hint");
+const lookupError      = document.getElementById("lookup-error");
+const statusMsg        = document.getElementById("status-msg");
+const reviewsGrid      = document.getElementById("reviews-grid");
+const outputEmpty      = document.getElementById("output-empty");
+const outputActions    = document.getElementById("output-actions");
+const customPill       = document.getElementById("custom-pill");
 const customDateInputs = document.getElementById("custom-date-inputs");
+const searchInput      = document.getElementById("business-search");
+const searchDropdown   = document.getElementById("search-dropdown");
 
 // ── Cookie helpers ────────────────────────────────────────────────────────────
 function getCookie(name) {
@@ -225,49 +225,72 @@ function updateCTAState() {
     }
 }
 
-// ── Phase 1: URL lookup ───────────────────────────────────────────────────────
-function sanitizeURL(raw) {
-    // Strip invisible/zero-width Unicode chars that can sneak in via paste
-    return raw.trim().replace(/[\u200B-\u200D\uFEFF\u00A0]/g, "");
-}
+// ── Phase 1: Business search ──────────────────────────────────────────────────
+let searchTimer = null;
 
-async function doLookup(url) {
-    url = sanitizeURL(url);
-    if (!url) return;
-    setLookupLoading(true);
-    lookupError.classList.add("hidden");
-    document.getElementById("biz-confirmed").classList.add("hidden");
-    clearReviewsGrid();
+searchInput.addEventListener("input", () => {
+    const q = searchInput.value.trim();
+    clearTimeout(searchTimer);
 
+    if (q.length < 3) {
+        closeDropdown();
+        return;
+    }
+
+    searchTimer = setTimeout(() => doSearch(q), 300);
+});
+
+searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeDropdown();
+});
+
+document.addEventListener("click", (e) => {
+    if (!searchInput.contains(e.target) && !searchDropdown.contains(e.target)) {
+        closeDropdown();
+    }
+});
+
+async function doSearch(q) {
     try {
-        const place         = await post("/api/lookup", { url });
-        state.placeId       = place.place_id;
-        currentBusinessName = place.name;
-        renderBusinessConfirm(place);
-        stepCompleted.step1 = true;
-        updateCTAState();
-    } catch (err) {
-        showLookupError(err.message);
-        state.placeId       = null;
-        stepCompleted.step1 = false;
-        updateCTAState();
-    } finally {
-        setLookupLoading(false);
+        const data = await get(`/api/search?query=${encodeURIComponent(q)}`);
+        renderDropdown(data.results);
+    } catch {
+        closeDropdown();
     }
 }
 
-lookupForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    doLookup(document.getElementById("business-url").value.trim());
-});
+function renderDropdown(results) {
+    if (!results || results.length === 0) {
+        closeDropdown();
+        return;
+    }
+    searchDropdown.innerHTML = "";
+    results.forEach(r => {
+        const li = document.createElement("li");
+        li.className = "search-result-item";
+        li.innerHTML = `<span class="result-name">${esc(r.name)}</span><span class="result-address">${esc(r.address)}</span>`;
+        li.addEventListener("click", () => selectBusiness(r));
+        searchDropdown.appendChild(li);
+    });
+    searchDropdown.classList.remove("hidden");
+}
 
-document.getElementById("business-url").addEventListener("paste", (e) => {
-    // Let the paste land in the input first, then read the value
-    setTimeout(() => {
-        const url = e.target.value.trim();
-        if (url) doLookup(url);
-    }, 0);
-});
+function closeDropdown() {
+    searchDropdown.classList.add("hidden");
+    searchDropdown.innerHTML = "";
+}
+
+function selectBusiness(place) {
+    state.placeId       = place.place_id;
+    currentBusinessName = place.name;
+    searchInput.value   = place.name;
+    closeDropdown();
+    lookupError.classList.add("hidden");
+    renderBusinessConfirm(place);
+    stepCompleted.step1 = true;
+    updateCTAState();
+    clearReviewsGrid();
+}
 
 // ── Phase 2: Generate graphics ────────────────────────────────────────────────
 fetchBtn.addEventListener("click", async () => {
@@ -305,13 +328,20 @@ fetchBtn.addEventListener("click", async () => {
     }
 });
 
-// ── API helper ────────────────────────────────────────────────────────────────
+// ── API helpers ───────────────────────────────────────────────────────────────
 async function post(path, body) {
     const res  = await fetch(`${API}${path}`, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(body),
     });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+    return data;
+}
+
+async function get(path) {
+    const res  = await fetch(`${API}${path}`);
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
     return data;
@@ -726,10 +756,6 @@ function clearReviewsGrid() {
     hideStatus();
 }
 
-function setLookupLoading(on) {
-    const input = document.getElementById("business-url");
-    if (input) input.disabled = on;
-}
 
 function setGenerateLoading(on) {
     const canGenerate = stepCompleted.step1 && state.datePreset !== null;
