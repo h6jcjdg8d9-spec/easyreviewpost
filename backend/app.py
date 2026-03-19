@@ -25,9 +25,8 @@ FRONTEND_DIR = _sibling if os.path.exists(_sibling) else os.path.join(_base, "fr
 # ── Stripe ─────────────────────────────────────────────────────────────────────
 stripe.api_key          = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET   = os.getenv("STRIPE_WEBHOOK_SECRET", "")
-ONETIME_PRICE_CENTS     = 999   # $9.99
-# Foundation placeholder for future subscription tier
-SUBSCRIPTION_PRICE_ID   = os.getenv("STRIPE_SUBSCRIPTION_PRICE_ID", "price_placeholder")
+ONETIME_PRICE_CENTS     = 499   # $4.99
+SUBSCRIPTION_PRICE_ID   = os.getenv("STRIPE_SUBSCRIPTION_PRICE_ID", "price_1TChiUK1B0iiSk9yMzGfQb0q")
 # Canonical public URL — set SITE_URL=https://easyreviewpost.com in Render env vars.
 # Falls back to request.host_url inside the route if not set.
 SITE_URL                = os.getenv("SITE_URL", "").rstrip("/")
@@ -50,6 +49,17 @@ def init_db():
             stripe_session_id TEXT UNIQUE,
             tier              TEXT DEFAULT 'onetime',
             created_at        TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS subscribers (
+            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+            email               TEXT NOT NULL,
+            place_id            TEXT NOT NULL,
+            stripe_customer_id  TEXT,
+            stripe_subscription_id TEXT,
+            status              TEXT DEFAULT 'pending',
+            created_at          TEXT DEFAULT (datetime('now'))
         )
     """)
     conn.commit()
@@ -218,6 +228,32 @@ def create_checkout_onetime():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/create-checkout-subscription", methods=["POST"])
+def create_checkout_subscription():
+    """Create a Stripe Checkout session for the $9/month Auto subscription."""
+    body     = request.get_json(silent=True) or {}
+    email    = body.get("email", "").strip()
+    place_id = body.get("place_id", "").strip()
+
+    if not email or not place_id:
+        return jsonify({"error": "email and place_id are required"}), 400
+
+    base_url = SITE_URL or request.host_url.rstrip("/")
+    try:
+        session = stripe.checkout.Session.create(
+            customer_email=email,
+            payment_method_types=["card"],
+            mode="subscription",
+            line_items=[{"price": SUBSCRIPTION_PRICE_ID, "quantity": 1}],
+            metadata={"place_id": place_id, "email": email},
+            success_url=f"{base_url}/?auto_success=1&session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{base_url}/",
+        )
+        return jsonify({"url": session.url})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/unlock-session", methods=["POST"])
 def unlock_session():
     """
@@ -281,20 +317,33 @@ def stripe_webhook():
         sess       = event["data"]["object"]
         session_id = sess["id"]
         email      = (sess.get("customer_details") or {}).get("email", "") or ""
+        mode       = sess.get("mode")
 
         conn = get_db()
         try:
-            existing = conn.execute(
-                "SELECT id FROM custom_range_tokens WHERE stripe_session_id = ?",
-                (session_id,)
-            ).fetchone()
-            if not existing:
-                token = secrets.token_urlsafe(32)
+            if mode == "subscription":
+                place_id       = (sess.get("metadata") or {}).get("place_id", "")
+                subscription_id = sess.get("subscription", "")
+                customer_id     = sess.get("customer", "")
                 conn.execute(
-                    "INSERT OR IGNORE INTO custom_range_tokens (token, email, stripe_session_id, tier) VALUES (?, ?, ?, ?)",
-                    (token, email, session_id, "onetime")
+                    """INSERT OR IGNORE INTO subscribers
+                       (email, place_id, stripe_customer_id, stripe_subscription_id, status)
+                       VALUES (?, ?, ?, ?, 'active')""",
+                    (email, place_id, customer_id, subscription_id)
                 )
                 conn.commit()
+            else:
+                existing = conn.execute(
+                    "SELECT id FROM custom_range_tokens WHERE stripe_session_id = ?",
+                    (session_id,)
+                ).fetchone()
+                if not existing:
+                    token = secrets.token_urlsafe(32)
+                    conn.execute(
+                        "INSERT OR IGNORE INTO custom_range_tokens (token, email, stripe_session_id, tier) VALUES (?, ?, ?, ?)",
+                        (token, email, session_id, "onetime")
+                    )
+                    conn.commit()
         finally:
             conn.close()
 

@@ -917,6 +917,47 @@ input[type="color"] {
     opacity: 1;
 }
 
+/* ── Auto date pill ──────────────────────────────────────────────────────── */
+.date-pill-auto {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0.45;
+    cursor: pointer;
+}
+
+/* ── Auto modal fields ───────────────────────────────────────────────────── */
+.auto-modal-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.auto-field-input {
+    width: 100%;
+    padding: 10px 13px;
+    border: 1.5px solid #E4E7EF;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    color: var(--text);
+    background: #FAFAFA;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.auto-field-input:focus {
+    border-color: #6366F1;
+    background: #fff;
+}
+
+.auto-field-input[readonly] {
+    color: var(--text-muted);
+    cursor: default;
+}
+
 /* ── Inline custom date inputs (shown after unlock) ──────────────────────── */
 .custom-date-inputs {
     display: flex;

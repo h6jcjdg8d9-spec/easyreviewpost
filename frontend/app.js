@@ -164,6 +164,7 @@ const outputEmpty      = document.getElementById("output-empty");
 const outputActions    = document.getElementById("output-actions");
 const customPill       = document.getElementById("custom-pill");
 const customDateInputs = document.getElementById("custom-date-inputs");
+const autoPill         = document.getElementById("auto-pill");
 const searchInput      = document.getElementById("business-search");
 const searchDropdown   = document.getElementById("search-dropdown");
 
@@ -188,6 +189,15 @@ function applyUnlockState() {
 // ── Modal ─────────────────────────────────────────────────────────────────────
 function openUnlockModal()  { document.getElementById("unlock-modal").classList.remove("hidden"); }
 function closeUnlockModal() { document.getElementById("unlock-modal").classList.add("hidden"); }
+
+function openAutoModal() {
+    const modal = document.getElementById("auto-modal");
+    // Pre-fill business name if one is selected
+    const bizDisplay = document.getElementById("auto-biz-display");
+    if (typeof currentBusinessName !== "undefined" && currentBusinessName) bizDisplay.value = currentBusinessName;
+    modal.classList.remove("hidden");
+}
+function closeAutoModal() { document.getElementById("auto-modal").classList.add("hidden"); }
 
 // ── Stripe return (runs on page load if ?session_id= is present) ──────────────
 async function handleStripeReturn() {
@@ -801,13 +811,35 @@ function initPanel() {
         updateCTAState();
     });
 
+    autoPill.addEventListener("click", () => openAutoModal());
+
     // ── Unlock modal ────────────────────────────────────────────────────────────
     document.getElementById("modal-close").addEventListener("click", closeUnlockModal);
     document.getElementById("unlock-modal").addEventListener("click", (e) => {
         if (e.target === e.currentTarget) closeUnlockModal();
     });
     document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") closeUnlockModal();
+        if (e.key === "Escape") { closeUnlockModal(); closeAutoModal(); }
+    });
+
+    // ── Auto modal ───────────────────────────────────────────────────────────────
+    document.getElementById("auto-modal-close").addEventListener("click", closeAutoModal);
+    document.getElementById("auto-modal").addEventListener("click", (e) => {
+        if (e.target === e.currentTarget) closeAutoModal();
+    });
+    document.getElementById("btn-auto-subscribe").addEventListener("click", async () => {
+        const btn   = document.getElementById("btn-auto-subscribe");
+        const email = document.getElementById("auto-email-input").value.trim();
+        if (!email) { document.getElementById("auto-email-input").focus(); return; }
+        btn.disabled    = true;
+        btn.textContent = "Redirecting…";
+        try {
+            const data = await post("/api/create-checkout-subscription", { email, place_id: state.placeId });
+            window.location.href = data.url;
+        } catch (err) {
+            btn.disabled    = false;
+            btn.textContent = "Start for $9 / month";
+        }
     });
 
     document.getElementById("btn-unlock").addEventListener("click", async () => {
