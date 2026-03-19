@@ -5,9 +5,11 @@ import secrets
 import requests
 import anthropic
 import stripe
+from datetime import datetime, timezone
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from dotenv import load_dotenv
+from mailer import generate_review_png, send_review_email
 
 load_dotenv()
 
@@ -53,13 +55,23 @@ def init_db():
     """)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS subscribers (
-            id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-            email               TEXT NOT NULL,
-            place_id            TEXT NOT NULL,
-            stripe_customer_id  TEXT,
-            stripe_subscription_id TEXT,
-            status              TEXT DEFAULT 'pending',
-            created_at          TEXT DEFAULT (datetime('now'))
+            id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+            email                   TEXT NOT NULL,
+            place_id                TEXT NOT NULL,
+            stripe_customer_id      TEXT,
+            stripe_subscription_id  TEXT,
+            status                  TEXT DEFAULT 'pending',
+            last_swept_at           TEXT,
+            created_at              TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS sent_reviews (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            subscriber_id  INTEGER NOT NULL,
+            review_key     TEXT NOT NULL,
+            sent_at        TEXT DEFAULT (datetime('now')),
+            UNIQUE(subscriber_id, review_key)
         )
     """)
     conn.commit()
@@ -354,6 +366,100 @@ def stripe_webhook():
 def stripe_webhook_slash():
     """Catch trailing-slash variant that Render's routing layer may redirect to."""
     return stripe_webhook()
+
+
+SWEEP_SECRET = os.getenv("SWEEP_SECRET", "")
+
+@app.route("/api/sweep", methods=["POST"])
+def sweep():
+    """
+    Daily cron endpoint. Checks every active subscriber for new 5-star reviews
+    and emails graphics for any that haven't been sent yet.
+    Protected by SWEEP_SECRET header.
+    """
+    if SWEEP_SECRET and request.headers.get("X-Sweep-Secret") != SWEEP_SECRET:
+        return jsonify({"error": "unauthorized"}), 401
+
+    conn = get_db()
+    try:
+        subscribers = conn.execute(
+            "SELECT * FROM subscribers WHERE status = 'active'"
+        ).fetchall()
+    finally:
+        conn.close()
+
+    results = []
+    for sub in subscribers:
+        sub_id   = sub["id"]
+        email    = sub["email"]
+        place_id = sub["place_id"]
+
+        details = _fetch_place_details(
+            place_id,
+            fields="name,reviews",
+            reviews_sort="newest",
+        )
+        if not details:
+            results.append({"email": email, "status": "fetch_failed"})
+            continue
+
+        biz_name = details.get("name", "your business")
+        raw      = details.get("reviews", [])
+        five_star = [r for r in raw if r.get("rating") == 5 and r.get("text", "").strip()]
+
+        conn = get_db()
+        try:
+            new_reviews = []
+            for r in five_star:
+                key = f"{r.get('author_name','')}:{r.get('time', 0)}"
+                exists = conn.execute(
+                    "SELECT 1 FROM sent_reviews WHERE subscriber_id=? AND review_key=?",
+                    (sub_id, key)
+                ).fetchone()
+                if not exists:
+                    new_reviews.append(r)
+
+            if not new_reviews:
+                results.append({"email": email, "status": "no_new_reviews"})
+                conn.execute(
+                    "UPDATE subscribers SET last_swept_at=datetime('now') WHERE id=?",
+                    (sub_id,)
+                )
+                conn.commit()
+                continue
+
+            # Generate graphics and send email
+            reviews_with_images = []
+            for r in new_reviews[:5]:  # cap at 5 per email
+                text = r.get("text", "").strip()
+                png  = generate_review_png(text[:300], r.get("author_name", "A guest"), biz_name)
+                reviews_with_images.append({
+                    "author":    r.get("author_name", "A guest"),
+                    "text":      text,
+                    "png_bytes": png,
+                })
+
+            send_review_email(email, biz_name, reviews_with_images)
+
+            # Mark as sent
+            for r in new_reviews[:5]:
+                key = f"{r.get('author_name','')}:{r.get('time', 0)}"
+                conn.execute(
+                    "INSERT OR IGNORE INTO sent_reviews (subscriber_id, review_key) VALUES (?, ?)",
+                    (sub_id, key)
+                )
+            conn.execute(
+                "UPDATE subscribers SET last_swept_at=datetime('now') WHERE id=?",
+                (sub_id,)
+            )
+            conn.commit()
+            results.append({"email": email, "status": "sent", "count": len(reviews_with_images)})
+        except Exception as e:
+            results.append({"email": email, "status": "error", "detail": str(e)})
+        finally:
+            conn.close()
+
+    return jsonify({"swept": len(subscribers), "results": results})
 
 
 def _fetch_place_details(place_id, fields, **extra_params):

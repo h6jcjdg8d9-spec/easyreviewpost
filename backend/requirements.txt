@@ -5,3 +5,5 @@ python-dotenv==1.0.1
 anthropic>=0.40.0
 gunicorn
 stripe>=8.0.0
+resend>=0.7.0
+Pillow>=10.0.0
