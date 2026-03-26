@@ -32,33 +32,36 @@ body {
 
 /* ── Header ──────────────────────────────────────────────────────────────── */
 .site-header {
-    height: 52px;
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 32px;
+    flex-direction: column;
+    padding: 20px 32px 28px;
+    gap: 12px;
 }
 
 .brand-row {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 12px;
 }
 
 .brand-sep {
-    width: 1px;
-    height: 16px;
-    background: var(--border);
-    flex-shrink: 0;
+    display: none;
 }
 
 .brand-tagline {
-    font-size: 1rem;
-    font-family: 'Fredoka One', cursive;
-    font-weight: 400;
-    font-style: italic;
-    color: var(--text-dim);
-    line-height: 1;
+    font-size: 2.6rem;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+    max-width: 720px;
+}
+
+.tagline-accent {
+    color: #7C3AED;
+    font-weight: 800;
 }
 
 .brand {
@@ -87,7 +90,7 @@ body {
 
 /* ── Command center wrapper ──────────────────────────────────────────────── */
 .command-center-wrap {
-    padding: 40px 32px 32px;
+    padding: 52px 32px 32px;
     max-width: 1320px;
     margin: 0 auto;
 }
@@ -153,11 +156,38 @@ body {
     justify-content: center;
 }
 
-/* Step 1 box — compact */
+/* Step 1 box — compact, purple border to anchor the eye */
 .step-col:first-child .step-box {
     padding: 8px 9px 5px;
     gap: 6px;
     flex: 0;
+    border-color: rgba(124, 58, 237, 0.35);
+    box-shadow: var(--shadow), 0 0 0 1px rgba(124, 58, 237, 0.08);
+}
+
+/* Steps 2–4: recede visually — unlit, waiting */
+.step-col:not(:first-child) {
+    opacity: 0.55;
+    transition: opacity 0.3s ease;
+}
+
+.step-col:not(:first-child).unlocked {
+    opacity: 1;
+}
+
+.step-col:not(:first-child) .step-num {
+    font-size: 3rem;
+    color: var(--text-muted);
+}
+
+.step-col:not(:first-child) .step-word {
+    color: var(--text-dim);
+}
+
+.step-col:not(:first-child) .step-box {
+    background: var(--bg);
+    box-shadow: none;
+    border-color: var(--border);
 }
 
 
@@ -178,11 +208,12 @@ body {
 
 .step-tagline {
     font-size: 26px;
-    font-family: 'Fredoka One', cursive;
-    font-weight: 400;
-    font-style: italic;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-weight: 800;
+    font-style: normal;
     color: #7C3AED;
     line-height: 1;
+    letter-spacing: -0.03em;
 }
 
 /* ── Step 1: Business search ─────────────────────────────────────────────── */
@@ -1098,10 +1129,17 @@ input[type="color"] {
 }
 
 @media (max-width: 600px) {
-    .site-header { padding: 0 16px; }
+    .site-header {
+        padding: 16px 16px 20px;
+        gap: 10px;
+    }
+
+    .brand-tagline {
+        font-size: 2rem;
+    }
 
     .command-center-wrap {
-        padding: 4px 16px 24px;
+        padding: 32px 16px 24px;
     }
 
     .command-center {
@@ -1126,27 +1164,23 @@ input[type="color"] {
 }
 
 @media (max-width: 480px) {
-    /* Header: stack everything vertically */
     .site-header {
-        height: auto;
-        padding: 12px 16px 10px;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
+        padding: 14px 16px 18px;
+        gap: 10px;
     }
 
-    .brand-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 3px;
-    }
-
-    .brand-sep {
-        display: none;
-    }
-
+    /* Tagline dominates: larger than step numbers */
     .brand-tagline {
-        font-size: 0.78rem;
+        font-size: 2.2rem;
+    }
+
+    /* Step numbers smaller so tagline wins */
+    .step-num {
+        font-size: 2rem;
+    }
+
+    .step-col:not(:first-child) .step-num {
+        font-size: 1.8rem;
     }
 
     .brand-feedback {
@@ -1155,7 +1189,7 @@ input[type="color"] {
 
     /* Command center: more breathing room between steps */
     .command-center-wrap {
-        padding: 20px 12px 28px;
+        padding: 28px 12px 28px;
     }
 
     .command-center {

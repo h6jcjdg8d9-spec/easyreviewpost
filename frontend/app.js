@@ -300,6 +300,7 @@ function selectBusiness(place) {
     stepCompleted.step1 = true;
     updateCTAState();
     clearReviewsGrid();
+    document.querySelectorAll(".step-col:not(:first-child)").forEach(col => col.classList.add("unlocked"));
 }
 
 // ── Phase 2: Generate graphics ────────────────────────────────────────────────
