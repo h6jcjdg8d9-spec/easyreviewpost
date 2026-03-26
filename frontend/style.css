@@ -34,8 +34,8 @@ body {
 .site-header {
     display: flex;
     flex-direction: column;
-    padding: 20px 32px 28px;
-    gap: 12px;
+    padding: 24px 32px 32px;
+    gap: 16px;
 }
 
 .brand-row {
@@ -50,7 +50,7 @@ body {
 }
 
 .brand-tagline {
-    font-size: 2.6rem;
+    font-size: clamp(1.6rem, 2.8vw, 2.6rem);
     font-family: 'Inter', system-ui, sans-serif;
     font-weight: 700;
     color: var(--text);
@@ -64,11 +64,20 @@ body {
     font-weight: 800;
 }
 
+.hero-sub {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #7C3AED;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
 .brand {
     font-size: 1.15rem;
     font-weight: 800;
     letter-spacing: -0.03em;
-    color: var(--text);
+    color: #7C3AED;
     text-decoration: none;
     line-height: 1;
 }
@@ -1130,12 +1139,8 @@ input[type="color"] {
 
 @media (max-width: 600px) {
     .site-header {
-        padding: 16px 16px 20px;
-        gap: 10px;
-    }
-
-    .brand-tagline {
-        font-size: 2rem;
+        padding: 20px 20px 24px;
+        gap: 14px;
     }
 
     .command-center-wrap {
@@ -1165,13 +1170,8 @@ input[type="color"] {
 
 @media (max-width: 480px) {
     .site-header {
-        padding: 14px 16px 18px;
-        gap: 10px;
-    }
-
-    /* Tagline dominates: larger than step numbers */
-    .brand-tagline {
-        font-size: 2.2rem;
+        padding: 20px 20px 22px;
+        gap: 14px;
     }
 
     /* Step numbers smaller so tagline wins */
