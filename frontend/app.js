@@ -168,6 +168,8 @@ const autoPill         = document.getElementById("auto-pill");
 const searchInput      = document.getElementById("business-search");
 const searchDropdown   = document.getElementById("search-dropdown");
 
+window.addEventListener("load", () => searchInput.focus());
+
 // ── Cookie helpers ────────────────────────────────────────────────────────────
 function getCookie(name) {
     const val   = `; ${document.cookie}`;

@@ -21,6 +21,7 @@ body {
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
+    overflow-x: hidden;
 }
 
 .hidden { display: none !important; }
@@ -56,7 +57,7 @@ body {
     color: var(--text);
     line-height: 1.15;
     letter-spacing: -0.03em;
-    max-width: 720px;
+    max-width: min(720px, 100%);
 }
 
 .tagline-accent {
@@ -247,6 +248,12 @@ body {
 #business-search:focus {
     border-color: var(--accent);
     background: white;
+    animation: input-pulse 2s ease-in-out infinite;
+}
+
+@keyframes input-pulse {
+    0%, 100% { box-shadow: 0 0 0 0px rgba(124, 58, 237, 0.25); }
+    50%       { box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.15); }
 }
 
 .search-dropdown {
@@ -1208,19 +1215,17 @@ input[type="color"] {
         font-size: 18px;
     }
 
-    /* Step boxes: more internal padding + side breathing room */
+    /* Step boxes: clean padding, no extra margins */
     .step-box {
         padding: 14px 12px;
-        margin-left: 16px;
-        margin-right: 16px;
-        width: auto;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .step-col:first-child .step-box {
         padding: 10px 12px 8px;
-        margin-left: 16px;
-        margin-right: 16px;
-        width: auto;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     /* Color swatches: inset from edges */
