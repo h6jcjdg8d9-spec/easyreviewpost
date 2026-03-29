@@ -579,7 +579,9 @@ def _fetch_place_details_new(place_id, field_mask):
         # publishTime is ISO 8601 — convert to Unix epoch for date filtering
         pub = r.get("publishTime", "")
         try:
-            ts = int(datetime.fromisoformat(pub.replace("Z", "+00:00")).timestamp())
+            # Strip fractional seconds before parsing (fromisoformat pre-3.11 chokes on them)
+            pub_clean = re.sub(r'\.\d+Z$', 'Z', pub).replace("Z", "+00:00")
+            ts = int(datetime.fromisoformat(pub_clean).timestamp())
         except Exception:
             ts = 0
         reviews.append({
