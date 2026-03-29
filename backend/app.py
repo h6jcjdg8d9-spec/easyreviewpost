@@ -102,16 +102,23 @@ def frontend_static(filename):
 
 
 def _extract_place_id_from_url(url):
-    """Try to extract a Google place_id from a Maps URL. Returns None if not found."""
+    """
+    Try to extract a place identifier from a Google Maps URL.
+    Returns (id, id_type) where id_type is 'place_id' or 'data_id', or (None, None).
+    """
     # ?place_id=... or &query_place_id=...
     m = re.search(r'(?:place_id|query_place_id)=([A-Za-z0-9_\-]+)', url)
     if m:
-        return m.group(1)
+        return m.group(1), 'place_id'
     # data=!...!1sChIJ... encoded in the URL path
     m = re.search(r'!1s(ChIJ[A-Za-z0-9_\-]+)', url)
     if m:
-        return m.group(1)
-    return None
+        return m.group(1), 'place_id'
+    # data=!...!1s0xHEX:0xHEX (data_id format)
+    m = re.search(r'!1s(0x[0-9a-fA-F]+:0x[0-9a-fA-F]+)', url)
+    if m:
+        return m.group(1), 'data_id'
+    return None, None
 
 
 def _extract_name_from_maps_url(url):
@@ -134,15 +141,24 @@ def search_places():
 
     # ── Google Maps URL: try direct place lookup first ─────────────────────
     if "google.com/maps" in query or "maps.google.com" in query:
-        place_id = _extract_place_id_from_url(query)
-        if place_id:
-            details = _fetch_place_details(place_id, fields="name,formatted_address,place_id")
+        extracted_id, id_type = _extract_place_id_from_url(query)
+        if extracted_id and id_type == 'place_id':
+            details = _fetch_place_details(extracted_id, fields="name,formatted_address,place_id")
             if details:
-                print(f"[search] maps_url → place_id={place_id!r} name={details.get('name')!r}", flush=True)
+                print(f"[search] maps_url → place_id={extracted_id!r} name={details.get('name')!r}", flush=True)
                 return jsonify({"results": [{
-                    "place_id": place_id,
+                    "place_id": extracted_id,
                     "name": details.get("name", ""),
                     "address": details.get("formatted_address", ""),
+                }]})
+        elif extracted_id and id_type == 'data_id' and SERPAPI_KEY:
+            info = _serpapi_place_info(extracted_id)
+            if info:
+                print(f"[search] maps_url → data_id={extracted_id!r} name={info.get('name')!r}", flush=True)
+                return jsonify({"results": [{
+                    "place_id": extracted_id,
+                    "name": info.get("name", ""),
+                    "address": info.get("address", ""),
                 }]})
         # Fall back to extracting name and running text search
         name = _extract_name_from_maps_url(query)
@@ -186,9 +202,15 @@ def get_reviews():
         return jsonify({"error": "place_id is required"}), 400
 
     # Place metadata (name, aggregate rating, total count)
-    details = _fetch_place_details(place_id, fields="name,rating,user_ratings_total")
-    if details is None:
-        return jsonify({"error": "Could not fetch business details."}), 502
+    if place_id.startswith("0x") and SERPAPI_KEY:
+        info = _serpapi_place_info(place_id)
+        if info is None:
+            return jsonify({"error": "Could not fetch business details."}), 502
+        details = {"name": info["name"], "rating": info["rating"], "user_ratings_total": info["total"]}
+    else:
+        details = _fetch_place_details(place_id, fields="name,rating,user_ratings_total")
+        if details is None:
+            return jsonify({"error": "Could not fetch business details."}), 502
 
     # Reviews — prefer SerpAPI, fall back to legacy Places API
     reviews = _fetch_reviews_serpapi(place_id) if SERPAPI_KEY else None
@@ -582,17 +604,53 @@ def _approx_timestamp_from_relative(relative):
     return int(now.timestamp())
 
 
+def _serpapi_id_param(place_id):
+    """Return the correct SerpAPI parameter key for a given place identifier."""
+    if place_id.startswith("0x"):
+        return "data_id"
+    return "place_id"
+
+
+def _serpapi_place_info(place_id):
+    """
+    Fetch place metadata (name, address, rating, review count) from SerpAPI.
+    Returns a dict or None on failure.
+    """
+    id_key = _serpapi_id_param(place_id)
+    params = {
+        "engine":  "google_maps_reviews",
+        id_key:    place_id,
+        "hl":      "en",
+        "api_key": SERPAPI_KEY,
+    }
+    try:
+        resp = requests.get("https://serpapi.com/search", params=params, timeout=15)
+        data = resp.json()
+    except Exception:
+        return None
+    if "error" in data:
+        return None
+    info = data.get("place_info", {})
+    return {
+        "name":    info.get("title", ""),
+        "address": info.get("address", ""),
+        "rating":  info.get("rating", 0),
+        "total":   info.get("reviews", 0),
+    }
+
+
 def _fetch_reviews_serpapi(place_id, max_reviews=40):
     """
     Fetch reviews via SerpAPI google_maps_reviews engine, following pagination.
     Returns list of normalized review dicts or None on failure.
     """
+    id_key = _serpapi_id_param(place_id)
     all_reviews = []
     base_params = {
-        "engine":   "google_maps_reviews",
-        "place_id": place_id,
-        "hl":       "en",
-        "api_key":  SERPAPI_KEY,
+        "engine":  "google_maps_reviews",
+        id_key:    place_id,
+        "hl":      "en",
+        "api_key": SERPAPI_KEY,
     }
     params = dict(base_params)
     page = 0
