@@ -425,6 +425,7 @@ async function renderReviews(reviews, businessName) {
             const off = document.createElement("canvas");
             drawGraphic(off, review, businessName);
             downloadPNG(off, review.author);
+            gtag("event", "graphic_downloaded");
         });
 
         const confirm = card.querySelector(".copy-confirm");
@@ -985,6 +986,7 @@ function initPanel() {
         const email    = document.getElementById("email-input").value.trim();
         const feedback = document.getElementById("email-feedback");
         if (!email) return;
+        gtag("event", "graphic_emailed");
         feedback.textContent = "Email delivery coming soon — use Download All for now.";
         feedback.classList.remove("hidden");
         setTimeout(() => feedback.classList.add("hidden"), 4000);
