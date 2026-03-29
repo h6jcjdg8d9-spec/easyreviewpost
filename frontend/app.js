@@ -425,7 +425,7 @@ async function renderReviews(reviews, businessName) {
             const off = document.createElement("canvas");
             drawGraphic(off, review, businessName);
             downloadPNG(off, review.author);
-            gtag("event", "graphic_downloaded");
+            gtag("event", "download_individual");
         });
 
         const confirm = card.querySelector(".copy-confirm");
@@ -979,6 +979,7 @@ function initPanel() {
             drawGraphic(off, review, currentBusinessName);
             setTimeout(() => downloadPNG(off, review.author), i * 250);
         });
+        gtag("event", "download_all");
     });
 
     // ── Email send ──────────────────────────────────────────────────────────────
