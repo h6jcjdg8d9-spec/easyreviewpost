@@ -590,6 +590,7 @@ def _fetch_reviews_serpapi(place_id, sort_by="newestFirst"):
         "place_id": place_id,
         "sort_by":  sort_by,
         "hl":       "en",
+        "num":      20,
         "api_key":  SERPAPI_KEY,
     }
     try:
@@ -604,7 +605,13 @@ def _fetch_reviews_serpapi(place_id, sort_by="newestFirst"):
         return None
 
     raw = data.get("reviews", [])
-    print(f"[serpapi] place_id={place_id!r} fetched={len(raw)} reviews", flush=True)
+    pagination = data.get("serpapi_pagination", {})
+    print(
+        f"[serpapi] place_id={place_id!r} fetched={len(raw)} "
+        f"pagination_keys={list(pagination.keys())} "
+        f"top_keys={[k for k in data if k not in ('reviews','search_metadata','search_parameters','search_information')]}",
+        flush=True
+    )
 
     return [{
         "author":        r.get("user", {}).get("name", "Anonymous"),
