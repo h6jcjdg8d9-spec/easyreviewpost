@@ -5,7 +5,7 @@ import secrets
 import requests
 import anthropic
 import stripe
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -16,7 +16,8 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-API_KEY = os.getenv("GOOGLE_API_KEY")
+API_KEY     = os.getenv("GOOGLE_API_KEY")
+SERPAPI_KEY = os.getenv("SERPAPI_KEY", "")
 
 PLACES_BASE     = "https://maps.googleapis.com/maps/api/place"
 PLACES_NEW_BASE = "https://places.googleapis.com/v1/places"
@@ -182,42 +183,48 @@ def get_reviews():
     if not place_id:
         return jsonify({"error": "place_id is required"}), 400
 
-    details = _fetch_place_details(
-        place_id,
-        fields="name,rating,user_ratings_total,reviews",
-        reviews_sort="newest",
-    )
-
+    # Place metadata (name, aggregate rating, total count)
+    details = _fetch_place_details(place_id, fields="name,rating,user_ratings_total")
     if details is None:
-        return jsonify({"error": "Could not fetch reviews from Google."}), 502
+        return jsonify({"error": "Could not fetch business details."}), 502
 
-    raw = details.get("reviews", [])
-    print(f"[reviews] total_from_google={len(raw)}, ratings={[r.get('rating') for r in raw]}", flush=True)
+    # Reviews — prefer SerpAPI, fall back to legacy Places API
+    reviews = _fetch_reviews_serpapi(place_id) if SERPAPI_KEY else None
 
-    def _shape(r):
-        return {
-            "author": r.get("author_name", "Anonymous"),
-            "rating": r.get("rating", 5),
-            "text": r.get("text", "").strip(),
-            "timestamp": r.get("time", 0),
+    if reviews is None:
+        legacy = _fetch_place_details(
+            place_id,
+            fields="reviews",
+            reviews_sort="newest",
+        )
+        if legacy is None:
+            return jsonify({"error": "Could not fetch reviews."}), 502
+        raw = legacy.get("reviews", [])
+        reviews = [{
+            "author":        r.get("author_name", "Anonymous"),
+            "rating":        r.get("rating", 5),
+            "text":          r.get("text", "").strip(),
+            "timestamp":     r.get("time", 0),
             "relative_time": r.get("relative_time_description", ""),
-        }
+        } for r in raw]
 
-    five_star = [_shape(r) for r in raw if r.get("text", "").strip() and r.get("rating") == 5]
+    print(f"[reviews] total_fetched={len(reviews)}", flush=True)
+
+    five_star = [r for r in reviews if r.get("text") and r.get("rating") == 5]
     print(f"[reviews] after_5star_filter={len(five_star)}", flush=True)
 
     if len(five_star) <= 1:
-        four_star = [_shape(r) for r in raw if r.get("text", "").strip() and r.get("rating") == 4]
-        reviews = five_star + four_star
+        four_star = [r for r in reviews if r.get("text") and r.get("rating") == 4]
+        out = five_star + four_star
         print(f"[reviews] sparse_fallback: added {len(four_star)} four-star reviews", flush=True)
     else:
-        reviews = five_star
+        out = five_star
 
     return jsonify({
-        "name": details.get("name", ""),
+        "name":           details.get("name", ""),
         "overall_rating": details.get("rating", 0),
-        "total_reviews": details.get("user_ratings_total", 0),
-        "reviews": reviews,
+        "total_reviews":  details.get("user_ratings_total", 0),
+        "reviews":        out,
     })
 
 
@@ -545,6 +552,67 @@ def sweep():
             conn.close()
 
     return jsonify({"swept": len(subscribers), "results": results})
+
+
+def _approx_timestamp_from_relative(relative):
+    """Approximate a Unix timestamp from a string like '2 months ago'."""
+    now = datetime.now(timezone.utc)
+    if not relative:
+        return int(now.timestamp())
+    s = relative.lower()
+    m = re.search(r'(\d+)', s)
+    n = int(m.group(1)) if m else 1
+    try:
+        if 'minute' in s:
+            return int((now - timedelta(minutes=n)).timestamp())
+        if 'hour'   in s:
+            return int((now - timedelta(hours=n)).timestamp())
+        if 'day'    in s:
+            return int((now - timedelta(days=n)).timestamp())
+        if 'week'   in s:
+            return int((now - timedelta(weeks=n)).timestamp())
+        if 'month'  in s:
+            return int((now - timedelta(days=n * 30)).timestamp())
+        if 'year'   in s:
+            return int((now - timedelta(days=n * 365)).timestamp())
+    except Exception:
+        pass
+    return int(now.timestamp())
+
+
+def _fetch_reviews_serpapi(place_id, sort_by="newestFirst"):
+    """
+    Fetch reviews via SerpAPI google_maps_reviews engine.
+    Returns list of normalized review dicts or None on failure.
+    """
+    params = {
+        "engine":   "google_maps_reviews",
+        "place_id": place_id,
+        "sort_by":  sort_by,
+        "hl":       "en",
+        "api_key":  SERPAPI_KEY,
+    }
+    try:
+        resp = requests.get("https://serpapi.com/search", params=params, timeout=15)
+        data = resp.json()
+    except Exception as e:
+        print(f"[serpapi] request failed: {e}", flush=True)
+        return None
+
+    if "error" in data:
+        print(f"[serpapi] error: {data['error']}", flush=True)
+        return None
+
+    raw = data.get("reviews", [])
+    print(f"[serpapi] place_id={place_id!r} fetched={len(raw)} reviews", flush=True)
+
+    return [{
+        "author":        r.get("user", {}).get("name", "Anonymous"),
+        "rating":        r.get("rating", 5),
+        "text":          r.get("snippet", "").strip(),
+        "timestamp":     _approx_timestamp_from_relative(r.get("date", "")),
+        "relative_time": r.get("date", ""),
+    } for r in raw]
 
 
 def _fetch_place_details(place_id, fields, **extra_params):
