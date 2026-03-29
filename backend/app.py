@@ -580,7 +580,7 @@ def _approx_timestamp_from_relative(relative):
     return int(now.timestamp())
 
 
-def _fetch_reviews_serpapi(place_id, sort_by="newestFirst", max_reviews=40):
+def _fetch_reviews_serpapi(place_id, max_reviews=40):
     """
     Fetch reviews via SerpAPI google_maps_reviews engine, following pagination.
     Returns list of normalized review dicts or None on failure.
@@ -589,7 +589,6 @@ def _fetch_reviews_serpapi(place_id, sort_by="newestFirst", max_reviews=40):
     base_params = {
         "engine":   "google_maps_reviews",
         "place_id": place_id,
-        "sort_by":  sort_by,
         "hl":       "en",
         "api_key":  SERPAPI_KEY,
     }
