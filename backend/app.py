@@ -182,9 +182,10 @@ def get_reviews():
     if not place_id:
         return jsonify({"error": "place_id is required"}), 400
 
-    details = _fetch_place_details_new(
+    details = _fetch_place_details(
         place_id,
-        field_mask="displayName,rating,userRatingCount,reviews",
+        fields="name,rating,user_ratings_total,reviews",
+        reviews_sort="newest",
     )
 
     if details is None:
@@ -478,9 +479,10 @@ def sweep():
         email    = sub["email"]
         place_id = sub["place_id"]
 
-        details = _fetch_place_details_new(
+        details = _fetch_place_details(
             place_id,
-            field_mask="displayName,reviews",
+            fields="name,reviews",
+            reviews_sort="newest",
         )
         if not details:
             results.append({"email": email, "status": "fetch_failed"})
@@ -571,9 +573,6 @@ def _fetch_place_details_new(place_id, field_mask):
         return None
 
     data = resp.json()
-    print(f"[places_new] keys={list(data.keys())} review_count={len(data.get('reviews', []))}", flush=True)
-    if data.get("reviews"):
-        print(f"[places_new] sample_review={data['reviews'][0]}", flush=True)
 
     # Normalize to the same shape the rest of the code expects
     reviews_raw = data.get("reviews", [])
