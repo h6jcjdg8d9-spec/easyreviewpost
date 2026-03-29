@@ -610,7 +610,10 @@ def _fetch_reviews_serpapi(place_id, max_reviews=40):
             break
 
         raw = data.get("reviews", [])
-        print(f"[serpapi] page={page} fetched={len(raw)}", flush=True)
+        top_keys = [k for k in data if k not in ("search_metadata", "search_parameters", "search_information")]
+        print(f"[serpapi] page={page} fetched={len(raw)} top_keys={top_keys}", flush=True)
+        if page == 0 and raw:
+            print(f"[serpapi] sample_review={raw[0]}", flush=True)
         all_reviews.extend(raw)
 
         next_token = data.get("serpapi_pagination", {}).get("next_page_token")
