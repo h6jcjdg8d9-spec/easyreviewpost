@@ -18,7 +18,8 @@ CORS(app)
 
 API_KEY = os.getenv("GOOGLE_API_KEY")
 
-PLACES_BASE = "https://maps.googleapis.com/maps/api/place"
+PLACES_BASE     = "https://maps.googleapis.com/maps/api/place"
+PLACES_NEW_BASE = "https://places.googleapis.com/v1/places"
 
 _base = os.path.dirname(os.path.abspath(__file__))
 _sibling = os.path.normpath(os.path.join(_base, "..", "frontend"))
@@ -181,10 +182,9 @@ def get_reviews():
     if not place_id:
         return jsonify({"error": "place_id is required"}), 400
 
-    details = _fetch_place_details(
+    details = _fetch_place_details_new(
         place_id,
-        fields="name,rating,user_ratings_total,reviews",
-        reviews_sort="newest",
+        field_mask="displayName,rating,userRatingCount,reviews",
     )
 
     if details is None:
@@ -478,10 +478,9 @@ def sweep():
         email    = sub["email"]
         place_id = sub["place_id"]
 
-        details = _fetch_place_details(
+        details = _fetch_place_details_new(
             place_id,
-            fields="name,reviews",
-            reviews_sort="newest",
+            field_mask="displayName,reviews",
         )
         if not details:
             results.append({"email": email, "status": "fetch_failed"})
@@ -547,13 +546,56 @@ def sweep():
 
 
 def _fetch_place_details(place_id, fields, **extra_params):
-    """Shared helper for Place Details API calls. Returns the 'result' dict or None."""
+    """Legacy Places API helper. Returns the 'result' dict or None."""
     params = {"place_id": place_id, "fields": fields, "key": API_KEY, **extra_params}
     resp = requests.get(f"{PLACES_BASE}/details/json", params=params, timeout=10)
     data = resp.json()
     if data.get("status") != "OK":
         return None
     return data.get("result", {})
+
+
+def _fetch_place_details_new(place_id, field_mask):
+    """
+    Places API (New) helper — returns up to 53 reviews.
+    field_mask: comma-separated list e.g. 'displayName,rating,userRatingCount,reviews'
+    Returns a normalized dict with keys: name, rating, user_ratings_total, reviews (legacy shape).
+    """
+    headers = {
+        "X-Goog-Api-Key":   API_KEY,
+        "X-Goog-FieldMask": field_mask,
+    }
+    resp = requests.get(f"{PLACES_NEW_BASE}/{place_id}", headers=headers, timeout=10)
+    if resp.status_code != 200:
+        print(f"[places_new] status={resp.status_code} body={resp.text[:200]}", flush=True)
+        return None
+
+    data = resp.json()
+
+    # Normalize to the same shape the rest of the code expects
+    reviews_raw = data.get("reviews", [])
+    reviews = []
+    for r in reviews_raw:
+        # publishTime is ISO 8601 — convert to Unix epoch for date filtering
+        pub = r.get("publishTime", "")
+        try:
+            ts = int(datetime.fromisoformat(pub.replace("Z", "+00:00")).timestamp())
+        except Exception:
+            ts = 0
+        reviews.append({
+            "author_name":               r.get("authorAttribution", {}).get("displayName", "Anonymous"),
+            "rating":                    r.get("rating", 5),
+            "text":                      r.get("text", {}).get("text", "").strip(),
+            "time":                      ts,
+            "relative_time_description": r.get("relativePublishTimeDescription", ""),
+        })
+
+    return {
+        "name":               data.get("displayName", {}).get("text", ""),
+        "rating":             data.get("rating", 0),
+        "user_ratings_total": data.get("userRatingCount", 0),
+        "reviews":            reviews,
+    }
 
 
 if __name__ == "__main__":
