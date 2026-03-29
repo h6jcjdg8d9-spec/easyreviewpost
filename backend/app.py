@@ -571,6 +571,9 @@ def _fetch_place_details_new(place_id, field_mask):
         return None
 
     data = resp.json()
+    print(f"[places_new] keys={list(data.keys())} review_count={len(data.get('reviews', []))}", flush=True)
+    if data.get("reviews"):
+        print(f"[places_new] sample_review={data['reviews'][0]}", flush=True)
 
     # Normalize to the same shape the rest of the code expects
     reviews_raw = data.get("reviews", [])
