@@ -155,6 +155,8 @@ def search_places():
     resp = requests.get(f"{PLACES_BASE}/textsearch/json", params=params, timeout=10)
     data = resp.json()
     print(f"[search] query={query!r} status={data.get('status')!r} count={len(data.get('results', []))}", flush=True)
+    for r in data.get("results", [])[:5]:
+        print(f"  → {r.get('place_id')} | {r.get('name')} | {r.get('formatted_address')}", flush=True)
 
     if data.get("status") not in ("OK", "ZERO_RESULTS"):
         return jsonify({"error": "Search failed"}), 502
