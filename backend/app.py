@@ -565,12 +565,7 @@ def _fetch_place_details_new(place_id, field_mask):
         "X-Goog-Api-Key":   API_KEY,
         "X-Goog-FieldMask": field_mask,
     }
-    resp = requests.get(
-        f"{PLACES_NEW_BASE}/{place_id}",
-        headers=headers,
-        params={"reviewsSort": "newestFirst"},
-        timeout=10,
-    )
+    resp = requests.get(f"{PLACES_NEW_BASE}/{place_id}", headers=headers, timeout=10)
     if resp.status_code != 200:
         print(f"[places_new] status={resp.status_code} body={resp.text[:200]}", flush=True)
         return None
