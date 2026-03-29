@@ -647,10 +647,11 @@ def _fetch_reviews_serpapi(place_id, max_reviews=40):
     id_key = _serpapi_id_param(place_id)
     all_reviews = []
     base_params = {
-        "engine":  "google_maps_reviews",
-        id_key:    place_id,
-        "hl":      "en",
-        "api_key": SERPAPI_KEY,
+        "engine":   "google_maps_reviews",
+        id_key:     place_id,
+        "sort_by":  "newestFirst",
+        "hl":       "en",
+        "api_key":  SERPAPI_KEY,
     }
     params = dict(base_params)
     page = 0
