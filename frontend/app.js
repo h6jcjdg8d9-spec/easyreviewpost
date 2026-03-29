@@ -981,15 +981,39 @@ function initPanel() {
         });
     });
 
-    // ── Email send (UI stub) ────────────────────────────────────────────────────
-    document.getElementById("email-send-btn").addEventListener("click", () => {
+    // ── Email send ──────────────────────────────────────────────────────────────
+    document.getElementById("email-send-btn").addEventListener("click", async () => {
         const email    = document.getElementById("email-input").value.trim();
         const feedback = document.getElementById("email-feedback");
-        if (!email) return;
-        gtag("event", "graphic_emailed");
-        feedback.textContent = "Email delivery coming soon — use Download All for now.";
+        const btn      = document.getElementById("email-send-btn");
+        if (!email || !currentReviews.length) return;
+
+        btn.disabled    = true;
+        btn.textContent = "Sending…";
+        feedback.classList.add("hidden");
+
+        const graphics = currentReviews.map(review => {
+            const off = document.createElement("canvas");
+            drawGraphic(off, review, currentBusinessName);
+            return { author: review.author, png_b64: off.toDataURL("image/png") };
+        });
+
+        try {
+            await post("/api/email-graphics", {
+                email,
+                business_name: currentBusinessName,
+                graphics,
+            });
+            gtag("event", "graphic_emailed");
+            feedback.textContent = `Sent to ${email}!`;
+        } catch {
+            feedback.textContent = "Something went wrong — try again.";
+        }
+
         feedback.classList.remove("hidden");
-        setTimeout(() => feedback.classList.add("hidden"), 4000);
+        btn.disabled    = false;
+        btn.textContent = "Send";
+        setTimeout(() => feedback.classList.add("hidden"), 5000);
     });
 }
 

@@ -220,6 +220,47 @@ def get_reviews():
     })
 
 
+@app.route("/api/email-graphics", methods=["POST"])
+def email_graphics():
+    """
+    Send user-rendered review graphics to a given email address.
+    Body: { email, business_name, graphics: [{ author, png_b64 }] }
+    """
+    import base64
+    body         = request.get_json(silent=True) or {}
+    to_email     = body.get("email", "").strip()
+    business_name = body.get("business_name", "your business").strip()
+    graphics     = body.get("graphics", [])
+
+    if not to_email or not graphics:
+        return jsonify({"error": "email and graphics are required"}), 400
+
+    reviews_with_images = []
+    for g in graphics[:10]:  # cap at 10
+        raw_b64 = g.get("png_b64", "")
+        if raw_b64.startswith("data:"):
+            raw_b64 = raw_b64.split(",", 1)[-1]
+        try:
+            png_bytes = base64.b64decode(raw_b64)
+        except Exception:
+            continue
+        reviews_with_images.append({
+            "author":    g.get("author", "reviewer"),
+            "text":      "",
+            "png_bytes": png_bytes,
+        })
+
+    if not reviews_with_images:
+        return jsonify({"error": "No valid graphics"}), 400
+
+    try:
+        from mailer import send_review_email
+        send_review_email(to_email, business_name, reviews_with_images)
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/excerpt", methods=["POST"])
 def get_excerpt():
     """
