@@ -580,46 +580,55 @@ def _approx_timestamp_from_relative(relative):
     return int(now.timestamp())
 
 
-def _fetch_reviews_serpapi(place_id, sort_by="newestFirst"):
+def _fetch_reviews_serpapi(place_id, sort_by="newestFirst", max_reviews=40):
     """
-    Fetch reviews via SerpAPI google_maps_reviews engine.
+    Fetch reviews via SerpAPI google_maps_reviews engine, following pagination.
     Returns list of normalized review dicts or None on failure.
     """
-    params = {
+    all_reviews = []
+    base_params = {
         "engine":   "google_maps_reviews",
         "place_id": place_id,
         "sort_by":  sort_by,
         "hl":       "en",
-        "num":      20,
         "api_key":  SERPAPI_KEY,
     }
-    try:
-        resp = requests.get("https://serpapi.com/search", params=params, timeout=15)
-        data = resp.json()
-    except Exception as e:
-        print(f"[serpapi] request failed: {e}", flush=True)
-        return None
+    params = dict(base_params)
+    page = 0
 
-    if "error" in data:
-        print(f"[serpapi] error: {data['error']}", flush=True)
-        return None
+    while len(all_reviews) < max_reviews:
+        try:
+            resp = requests.get("https://serpapi.com/search", params=params, timeout=15)
+            data = resp.json()
+        except Exception as e:
+            print(f"[serpapi] request failed (page {page}): {e}", flush=True)
+            break
 
-    raw = data.get("reviews", [])
-    pagination = data.get("serpapi_pagination", {})
-    print(
-        f"[serpapi] place_id={place_id!r} fetched={len(raw)} "
-        f"pagination_keys={list(pagination.keys())} "
-        f"top_keys={[k for k in data if k not in ('reviews','search_metadata','search_parameters','search_information')]}",
-        flush=True
-    )
+        if "error" in data:
+            print(f"[serpapi] error (page {page}): {data['error']}", flush=True)
+            if page == 0:
+                return None
+            break
 
+        raw = data.get("reviews", [])
+        print(f"[serpapi] page={page} fetched={len(raw)}", flush=True)
+        all_reviews.extend(raw)
+
+        next_token = data.get("serpapi_pagination", {}).get("next_page_token")
+        if not next_token or not raw:
+            break
+
+        params = {**base_params, "next_page_token": next_token}
+        page += 1
+
+    print(f"[serpapi] place_id={place_id!r} total={len(all_reviews)}", flush=True)
     return [{
         "author":        r.get("user", {}).get("name", "Anonymous"),
         "rating":        r.get("rating", 5),
         "text":          r.get("snippet", "").strip(),
         "timestamp":     _approx_timestamp_from_relative(r.get("date", "")),
         "relative_time": r.get("date", ""),
-    } for r in raw]
+    } for r in all_reviews]
 
 
 def _fetch_place_details(place_id, fields, **extra_params):
