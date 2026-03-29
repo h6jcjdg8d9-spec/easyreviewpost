@@ -99,20 +99,57 @@ def frontend_static(filename):
     return send_from_directory(FRONTEND_DIR, filename)
 
 
+def _extract_place_id_from_url(url):
+    """Try to extract a Google place_id from a Maps URL. Returns None if not found."""
+    # ?place_id=... or &query_place_id=...
+    m = re.search(r'(?:place_id|query_place_id)=([A-Za-z0-9_\-]+)', url)
+    if m:
+        return m.group(1)
+    # data=!...!1sChIJ... encoded in the URL path
+    m = re.search(r'!1s(ChIJ[A-Za-z0-9_\-]+)', url)
+    if m:
+        return m.group(1)
+    return None
+
+
+def _extract_name_from_maps_url(url):
+    """Extract business name from a /maps/place/Name/@ style URL."""
+    m = re.search(r'/maps/place/([^/@]+)', url)
+    if m:
+        return re.sub(r'\+', ' ', m.group(1)).replace('%20', ' ')
+    return None
+
+
 @app.route("/api/search", methods=["GET"])
 def search_places():
     """
-    Accept a query string and return up to 5 matching businesses.
+    Accept a business name or Google Maps URL and return up to 5 matching businesses.
     Return: { results: [{ place_id, name, address }] }
     """
     query = request.args.get("query", "").strip()
     if not query or len(query) < 3:
         return jsonify({"results": []})
 
-    params = {
-        "query": query,
-        "key": API_KEY,
-    }
+    # ── Google Maps URL: try direct place lookup first ─────────────────────
+    if "google.com/maps" in query or "maps.google.com" in query:
+        place_id = _extract_place_id_from_url(query)
+        if place_id:
+            details = _fetch_place_details(place_id, fields="name,formatted_address,place_id")
+            if details:
+                print(f"[search] maps_url → place_id={place_id!r} name={details.get('name')!r}", flush=True)
+                return jsonify({"results": [{
+                    "place_id": place_id,
+                    "name": details.get("name", ""),
+                    "address": details.get("formatted_address", ""),
+                }]})
+        # Fall back to extracting name and running text search
+        name = _extract_name_from_maps_url(query)
+        if name:
+            query = name
+            print(f"[search] maps_url → extracted name={query!r}", flush=True)
+
+    # ── Normal text search ─────────────────────────────────────────────────
+    params = {"query": query, "key": API_KEY}
     resp = requests.get(f"{PLACES_BASE}/textsearch/json", params=params, timeout=10)
     data = resp.json()
     print(f"[search] query={query!r} status={data.get('status')!r} count={len(data.get('results', []))}", flush=True)
@@ -156,18 +193,24 @@ def get_reviews():
     raw = details.get("reviews", [])
     print(f"[reviews] total_from_google={len(raw)}, ratings={[r.get('rating') for r in raw]}", flush=True)
 
-    reviews = [
-        {
+    def _shape(r):
+        return {
             "author": r.get("author_name", "Anonymous"),
             "rating": r.get("rating", 5),
             "text": r.get("text", "").strip(),
-            "timestamp": r.get("time", 0),          # Unix epoch — used for date filtering
+            "timestamp": r.get("time", 0),
             "relative_time": r.get("relative_time_description", ""),
         }
-        for r in raw
-        if r.get("text", "").strip() and r.get("rating") == 5
-    ]
-    print(f"[reviews] after_5star_filter={len(reviews)}", flush=True)
+
+    five_star = [_shape(r) for r in raw if r.get("text", "").strip() and r.get("rating") == 5]
+    print(f"[reviews] after_5star_filter={len(five_star)}", flush=True)
+
+    if len(five_star) <= 1:
+        four_star = [_shape(r) for r in raw if r.get("text", "").strip() and r.get("rating") == 4]
+        reviews = five_star + four_star
+        print(f"[reviews] sparse_fallback: added {len(four_star)} four-star reviews", flush=True)
+    else:
+        reviews = five_star
 
     return jsonify({
         "name": details.get("name", ""),
