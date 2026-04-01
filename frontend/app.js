@@ -992,8 +992,10 @@ function initPanel() {
 
     // ── Download All ────────────────────────────────────────────────────────────
     document.getElementById("download-all-btn").addEventListener("click", () => {
+        const limit = isCustomUnlocked() ? Infinity : 5;
         const cards = reviewsGrid.querySelectorAll(".review-card");
         cards.forEach((card, i) => {
+            if (i >= limit) return;
             const review = currentReviews[i];
             if (!review) return;
             const off = document.createElement("canvas");
