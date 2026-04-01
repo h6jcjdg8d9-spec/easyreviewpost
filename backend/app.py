@@ -1,5 +1,6 @@
 import os
 import re
+import json
 import sqlite3
 import secrets
 import requests
@@ -74,6 +75,13 @@ def init_db():
             review_key     TEXT NOT NULL,
             sent_at        TEXT DEFAULT (datetime('now')),
             UNIQUE(subscriber_id, review_key)
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS serpapi_cache (
+            place_id   TEXT PRIMARY KEY,
+            reviews_json TEXT NOT NULL,
+            cached_at  TEXT DEFAULT (datetime('now'))
         )
     """)
     conn.commit()
@@ -234,17 +242,17 @@ def get_reviews():
 
     biz_name = details.get("name", "")
     five_star = [r for r in reviews if r.get("text") and r.get("rating") == 5]
-    print(f"[reviews] business={biz_name!r} total_fetched={len(reviews)} after_5star_filter={len(five_star)}", flush=True)
 
     if len(five_star) <= 1:
         four_star = [r for r in reviews if r.get("text") and r.get("rating") == 4]
-        out = five_star + four_star
-        print(f"[reviews] sparse_fallback: added {len(four_star)} four-star reviews", flush=True)
+        out = (five_star + four_star)[:5]
     else:
-        out = five_star
+        out = five_star[:5]
+
+    print(f"[reviews] business={biz_name!r} total_fetched={len(reviews)} returning={len(out)}", flush=True)
 
     return jsonify({
-        "name":           details.get("name", ""),
+        "name":           biz_name,
         "overall_rating": details.get("rating", 0),
         "total_reviews":  details.get("user_ratings_total", 0),
         "reviews":        out,
@@ -638,11 +646,49 @@ def _serpapi_place_info(place_id):
     }
 
 
+def _serpapi_cached(place_id):
+    """Return cached reviews list if under 24 hours old, else None."""
+    try:
+        conn = get_db()
+        row = conn.execute(
+            "SELECT reviews_json FROM serpapi_cache "
+            "WHERE place_id = ? AND cached_at > datetime('now', '-24 hours')",
+            (place_id,)
+        ).fetchone()
+        conn.close()
+        if row:
+            print(f"[serpapi] cache hit for place_id={place_id!r}", flush=True)
+            return json.loads(row["reviews_json"])
+    except Exception as e:
+        print(f"[serpapi] cache read error: {e}", flush=True)
+    return None
+
+
+def _serpapi_store_cache(place_id, reviews):
+    """Store reviews in cache, replacing any existing entry."""
+    try:
+        conn = get_db()
+        conn.execute(
+            "INSERT OR REPLACE INTO serpapi_cache (place_id, reviews_json, cached_at) "
+            "VALUES (?, ?, datetime('now'))",
+            (place_id, json.dumps(reviews))
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"[serpapi] cache write error: {e}", flush=True)
+
+
 def _fetch_reviews_serpapi(place_id, max_reviews=40):
     """
     Fetch reviews via SerpAPI google_maps_reviews engine, following pagination.
+    Results are cached in SQLite for 24 hours.
     Returns list of normalized review dicts or None on failure.
     """
+    cached = _serpapi_cached(place_id)
+    if cached is not None:
+        return cached
+
     id_key = _serpapi_id_param(place_id)
     all_reviews = []
     base_params = {
@@ -681,6 +727,7 @@ def _fetch_reviews_serpapi(place_id, max_reviews=40):
         page += 1
 
     print(f"[serpapi] place_id={place_id!r} total={len(all_reviews)}", flush=True)
+
     def _ts(r):
         iso = r.get("iso_date", "")
         if iso:
@@ -690,13 +737,16 @@ def _fetch_reviews_serpapi(place_id, max_reviews=40):
                 pass
         return _approx_timestamp_from_relative(r.get("date", ""))
 
-    return [{
+    reviews = [{
         "author":        r.get("user", {}).get("name", "Anonymous"),
         "rating":        r.get("rating", 5),
         "text":          r.get("snippet", "").strip(),
         "timestamp":     _ts(r),
         "relative_time": r.get("date", ""),
     } for r in all_reviews]
+
+    _serpapi_store_cache(place_id, reviews)
+    return reviews
 
 
 def _fetch_place_details(place_id, fields, **extra_params):

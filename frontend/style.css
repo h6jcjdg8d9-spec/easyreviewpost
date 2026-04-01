@@ -348,83 +348,6 @@ body {
 }
 
 /* Date pills */
-.date-pills {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    align-items: center;
-}
-
-.date-divider {
-    width: 1px;
-    height: 14px;
-    background: var(--border);
-    border-radius: 1px;
-    margin: 0 2px;
-    flex-shrink: 0;
-}
-
-.date-pill {
-    height: 24px;
-    padding: 0 9px;
-    background: transparent;
-    border: 1.5px solid var(--border);
-    border-radius: 999px;
-    font-size: 0.7rem;
-    font-weight: 500;
-    font-family: inherit;
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: all 0.12s;
-}
-
-.date-pill:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-}
-
-.date-pill.active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: white;
-}
-
-.date-pill.locked {
-    opacity: 0.35;
-    cursor: not-allowed;
-    pointer-events: none;
-}
-
-.date-custom-wrap {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.date-custom-wrap input[type="date"] {
-    flex: 1;
-    min-width: 0;
-    height: 28px;
-    padding: 0 6px;
-    border: 1.5px solid var(--border);
-    border-radius: var(--r-sm);
-    font-size: 0.7rem;
-    font-family: inherit;
-    color: var(--text);
-    background: var(--bg);
-    outline: none;
-}
-
-.date-custom-wrap input[type="date"]:focus {
-    border-color: var(--accent);
-}
-
-.date-sep {
-    font-size: 0.72rem;
-    color: var(--text-dim);
-    flex-shrink: 0;
-}
-
 /* ── Step 2: Palette ─────────────────────────────────────────────────────── */
 .palette-list {
     display: grid;
@@ -702,6 +625,24 @@ input[type="color"] {
     margin: 0 32px;
 }
 
+/* ── Subscription nudge ─────────────────────────────────────────────────── */
+.sub-nudge {
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    padding: 14px 32px 0;
+}
+
+.sub-nudge a {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.sub-nudge a:hover {
+    text-decoration: underline;
+}
+
 /* ── Graphics area ───────────────────────────────────────────────────────── */
 .graphics-area {
     max-width: 1320px;
@@ -817,45 +758,6 @@ input[type="color"] {
     position: relative;
 }
 
-.card-locked {
-    position: absolute;
-    inset: 0;
-    background: rgba(15, 15, 26, 0.72);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    border-radius: var(--r);
-    z-index: 2;
-}
-
-.card-locked-icon {
-    font-size: 1.4rem;
-    line-height: 1;
-}
-
-.card-locked-msg {
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: rgba(255,255,255,0.85);
-    text-align: center;
-    line-height: 1.4;
-}
-
-.btn-card-unlock {
-    margin-top: 2px;
-    padding: 7px 16px;
-    background: var(--accent);
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 0.78rem;
-    font-weight: 600;
-    cursor: pointer;
-}
 
 .card-canvas-wrap {
     background: #0f0f1a;
@@ -992,28 +894,6 @@ input[type="color"] {
     line-height: 1.65;
 }
 
-/* ── Custom date pill ────────────────────────────────────────────────────── */
-.date-pill-custom {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    opacity: 0.45;
-    cursor: pointer;
-}
-
-.date-pill-custom.unlocked {
-    opacity: 1;
-}
-
-/* ── Auto date pill ──────────────────────────────────────────────────────── */
-.date-pill-auto {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    opacity: 0.45;
-    cursor: pointer;
-}
-
 /* ── Auto modal fields ───────────────────────────────────────────────────── */
 .auto-modal-fields {
     display: flex;
@@ -1044,39 +924,6 @@ input[type="color"] {
 .auto-field-input[readonly] {
     color: var(--text-muted);
     cursor: default;
-}
-
-/* ── Inline custom date inputs (shown after unlock) ──────────────────────── */
-.custom-date-inputs {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    margin-top: 5px;
-}
-
-.custom-date-inputs input[type="date"] {
-    flex: 1;
-    min-width: 0;
-    height: 26px;
-    padding: 0 7px;
-    border: 1.5px solid var(--border);
-    border-radius: var(--r-sm);
-    font-size: 0.7rem;
-    font-family: inherit;
-    color: var(--text);
-    background: var(--bg);
-    outline: none;
-}
-
-.custom-date-inputs input[type="date"]:focus {
-    border-color: var(--accent);
-    background: white;
-}
-
-.date-range-sep {
-    font-size: 0.72rem;
-    color: var(--text-dim);
-    flex-shrink: 0;
 }
 
 /* ── Unlock modal ────────────────────────────────────────────────────────── */

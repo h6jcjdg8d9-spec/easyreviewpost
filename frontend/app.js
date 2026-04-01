@@ -101,7 +101,6 @@ const state = {
     customPalette: null,
     styleId:      "classic",
     platformId:   "instagram",
-    datePreset:   null,
     placeId:      null,
     logoImage:    null,
     bgImage:      null,
@@ -162,9 +161,6 @@ const statusMsg        = document.getElementById("status-msg");
 const reviewsGrid      = document.getElementById("reviews-grid");
 const outputEmpty      = document.getElementById("output-empty");
 const outputActions    = document.getElementById("output-actions");
-const customPill       = document.getElementById("custom-pill");
-const customDateInputs = document.getElementById("custom-date-inputs");
-const autoPill         = document.getElementById("auto-pill");
 const searchInput      = document.getElementById("business-search");
 const searchDropdown   = document.getElementById("search-dropdown");
 
@@ -182,16 +178,7 @@ function setCookie(name, value, days) {
     document.cookie = `${name}=${value}; max-age=${days * 86400}; path=/; SameSite=Lax`;
 }
 
-function isCustomUnlocked() { return !!getCookie("erp_custom_unlocked"); }
-
-function applyUnlockState() {
-    customPill.classList.toggle("unlocked", isCustomUnlocked());
-}
-
 // ── Modal ─────────────────────────────────────────────────────────────────────
-function openUnlockModal()  { document.getElementById("unlock-modal").classList.remove("hidden"); }
-function closeUnlockModal() { document.getElementById("unlock-modal").classList.add("hidden"); }
-
 function openAutoModal() {
     const modal = document.getElementById("auto-modal");
     // Pre-fill business name if one is selected
@@ -211,8 +198,6 @@ async function handleStripeReturn() {
         const data = await post("/api/unlock-session", { session_id: sessionId });
         if (data.token) {
             setCookie("erp_custom_unlocked", data.token, 3650); // ~10 years
-            applyUnlockState();
-            // Clean URL only after confirmed success so a refresh can retry on failure
             window.history.replaceState({}, "", window.location.pathname);
         }
     } catch (e) {
@@ -225,10 +210,6 @@ function updateCTAState() {
     if (!stepCompleted.step1) {
         fetchBtn.disabled   = true;
         ctaHint.textContent = "Paste your URL first to get started";
-        ctaHint.classList.remove("hidden");
-    } else if (!state.datePreset) {
-        fetchBtn.disabled   = true;
-        ctaHint.textContent = "Almost there! Pick a date range →";
         ctaHint.classList.remove("hidden");
     } else {
         fetchBtn.disabled   = false;
@@ -315,16 +296,10 @@ fetchBtn.addEventListener("click", async () => {
     try {
         showStatus("Fetching reviews…");
         const data    = await post("/api/reviews", { place_id: state.placeId });
-        let reviews   = data.reviews;
-        const { start, end } = getDateRange();
-        if (start || end) reviews = filterByDate(reviews, start, end);
+        const reviews = data.reviews;
 
         if (reviews.length === 0) {
-            showStatus(
-                (start || end)
-                    ? "No 5-star reviews found in this date range — try expanding your range."
-                    : "No 5-star reviews found for this business."
-            );
+            showStatus("No 5-star reviews found for this business.");
         } else {
             await renderReviews(reviews, currentBusinessName);
             console.log('graphics_generated fired', { business_name: currentBusinessName, review_count: reviews.length });
@@ -360,34 +335,6 @@ async function get(path) {
     return data;
 }
 
-// ── Date range from presets ───────────────────────────────────────────────────
-function getDateRange() {
-    const now = Date.now();
-    const preset = state.datePreset;
-    if (preset === "day")     return { start: new Date(now - 864e5),    end: new Date(now) };
-    if (preset === "week")    return { start: new Date(now - 6048e5),   end: new Date(now) };
-    if (preset === "month")   return { start: new Date(now - 2592e6),   end: new Date(now) };
-    if (preset === "quarter") return { start: new Date(now - 7776e6),   end: new Date(now) };
-    if (preset === "custom") {
-        const s = document.getElementById("date-start").value;
-        const e = document.getElementById("date-end").value;
-        return {
-            start: s ? new Date(s)             : null,
-            end:   e ? new Date(e + "T23:59:59") : null,
-        };
-    }
-    return { start: null, end: null };
-}
-
-function filterByDate(reviews, start, end) {
-    return reviews.filter(({ timestamp }) => {
-        const d = new Date(timestamp * 1000);
-        if (start && d < start) return false;
-        if (end   && d > end)   return false;
-        return true;
-    });
-}
-
 // ── Render reviews ────────────────────────────────────────────────────────────
 async function renderReviews(reviews, businessName) {
     currentReviews      = reviews;
@@ -405,9 +352,7 @@ async function renderReviews(reviews, businessName) {
     outputEmpty.classList.add("hidden");
     outputActions.classList.remove("hidden");
 
-    const FREE_LIMIT = 5;
-
-    reviews.forEach((review, idx) => {
+    reviews.forEach((review) => {
         const node = tpl.content.cloneNode(true);
 
         node.querySelector(".card-stars").textContent  = starChars(review.rating);
@@ -423,38 +368,19 @@ async function renderReviews(reviews, businessName) {
 
         requestAnimationFrame(() => drawGraphic(canvas, review, businessName));
 
-        const locked = idx >= FREE_LIMIT && !isCustomUnlocked();
+        card.querySelector(".btn-download").addEventListener("click", () => {
+            const off = document.createElement("canvas");
+            drawGraphic(off, review, businessName);
+            downloadPNG(off, review.author);
+            gtag("event", "download_individual");
+        });
 
-        if (locked) {
-            const overlay = document.createElement("div");
-            overlay.className = "card-locked";
-            overlay.innerHTML = `
-                <span class="card-locked-icon">🔒</span>
-                <span class="card-locked-msg">Unlock all graphics</span>
-                <button class="btn-card-unlock">Unlock — $4.99</button>
-            `;
-            overlay.querySelector(".btn-card-unlock").addEventListener("click", async () => {
-                const data = await post("/api/create-checkout-onetime", {});
-                if (data.url) window.location.href = data.url;
-            });
-            card.appendChild(overlay);
-            card.querySelector(".btn-download").disabled = true;
-            card.querySelector(".btn-copy").disabled = true;
-        } else {
-            card.querySelector(".btn-download").addEventListener("click", () => {
-                const off = document.createElement("canvas");
-                drawGraphic(off, review, businessName);
-                downloadPNG(off, review.author);
-                gtag("event", "download_individual");
-            });
-
-            const confirm = card.querySelector(".copy-confirm");
-            card.querySelector(".btn-copy").addEventListener("click", async () => {
-                await navigator.clipboard.writeText(buildCaption(review, businessName));
-                confirm.classList.remove("hidden");
-                setTimeout(() => confirm.classList.add("hidden"), 2000);
-            });
-        }
+        const confirm = card.querySelector(".copy-confirm");
+        card.querySelector(".btn-copy").addEventListener("click", async () => {
+            await navigator.clipboard.writeText(buildCaption(review, businessName));
+            confirm.classList.remove("hidden");
+            setTimeout(() => confirm.classList.add("hidden"), 2000);
+        });
     });
 }
 
@@ -815,36 +741,14 @@ function esc(str) {
 // ── Panel init ────────────────────────────────────────────────────────────────
 function initPanel() {
 
-    // ── Date presets ───────────────────────────────────────────────────────────
-    const monthBtn = document.querySelector('[data-preset="month"]');
-
-    monthBtn.addEventListener("click", () => {
-        monthBtn.classList.add("active");
-        customPill.classList.remove("active");
-        customDateInputs.classList.add("hidden");
-        state.datePreset = "month";
-        updateCTAState();
+    // ── Subscription nudge link ────────────────────────────────────────────────
+    document.getElementById("sub-nudge-link").addEventListener("click", (e) => {
+        e.preventDefault();
+        openAutoModal();
     });
 
-    customPill.addEventListener("click", () => {
-        if (!isCustomUnlocked()) { openUnlockModal(); return; }
-        const activating = !customPill.classList.contains("active");
-        customPill.classList.toggle("active", activating);
-        monthBtn.classList.toggle("active", !activating);
-        customDateInputs.classList.toggle("hidden", !activating);
-        state.datePreset = activating ? "custom" : "month";
-        updateCTAState();
-    });
-
-    autoPill.addEventListener("click", () => openAutoModal());
-
-    // ── Unlock modal ────────────────────────────────────────────────────────────
-    document.getElementById("modal-close").addEventListener("click", closeUnlockModal);
-    document.getElementById("unlock-modal").addEventListener("click", (e) => {
-        if (e.target === e.currentTarget) closeUnlockModal();
-    });
     document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") { closeUnlockModal(); closeAutoModal(); }
+        if (e.key === "Escape") { closeAutoModal(); }
     });
 
     // ── Auto modal ───────────────────────────────────────────────────────────────
@@ -866,22 +770,6 @@ function initPanel() {
             btn.textContent = "Start for $9 / month";
         }
     });
-
-    document.getElementById("btn-unlock").addEventListener("click", async () => {
-        const btn = document.getElementById("btn-unlock");
-        btn.disabled    = true;
-        btn.textContent = "Redirecting…";
-        try {
-            const data = await post("/api/create-checkout-onetime", {});
-            window.location.href = data.url;
-        } catch {
-            btn.disabled    = false;
-            btn.textContent = "Unlock for $9.99";
-        }
-    });
-
-    // Auto-select 30 days (free default)
-    monthBtn.click();
 
     // ── Compact palette rows ────────────────────────────────────────────────────
     const paletteList = document.getElementById("palette-list");
@@ -992,10 +880,8 @@ function initPanel() {
 
     // ── Download All ────────────────────────────────────────────────────────────
     document.getElementById("download-all-btn").addEventListener("click", () => {
-        const limit = isCustomUnlocked() ? Infinity : 5;
         const cards = reviewsGrid.querySelectorAll(".review-card");
         cards.forEach((card, i) => {
-            if (i >= limit) return;
             const review = currentReviews[i];
             if (!review) return;
             const off = document.createElement("canvas");
@@ -1043,6 +929,5 @@ function initPanel() {
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 initPanel();
-applyUnlockState();   // reflect cookie immediately (no network call)
 handleStripeReturn(); // async — exchanges ?session_id= for token if returning from Stripe
 updateCTAState();
