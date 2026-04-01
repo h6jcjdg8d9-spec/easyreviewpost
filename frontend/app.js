@@ -405,7 +405,9 @@ async function renderReviews(reviews, businessName) {
     outputEmpty.classList.add("hidden");
     outputActions.classList.remove("hidden");
 
-    reviews.forEach((review) => {
+    const FREE_LIMIT = 5;
+
+    reviews.forEach((review, idx) => {
         const node = tpl.content.cloneNode(true);
 
         node.querySelector(".card-stars").textContent  = starChars(review.rating);
@@ -421,19 +423,38 @@ async function renderReviews(reviews, businessName) {
 
         requestAnimationFrame(() => drawGraphic(canvas, review, businessName));
 
-        card.querySelector(".btn-download").addEventListener("click", () => {
-            const off = document.createElement("canvas");
-            drawGraphic(off, review, businessName);
-            downloadPNG(off, review.author);
-            gtag("event", "download_individual");
-        });
+        const locked = idx >= FREE_LIMIT && !isCustomUnlocked();
 
-        const confirm = card.querySelector(".copy-confirm");
-        card.querySelector(".btn-copy").addEventListener("click", async () => {
-            await navigator.clipboard.writeText(buildCaption(review, businessName));
-            confirm.classList.remove("hidden");
-            setTimeout(() => confirm.classList.add("hidden"), 2000);
-        });
+        if (locked) {
+            const overlay = document.createElement("div");
+            overlay.className = "card-locked";
+            overlay.innerHTML = `
+                <span class="card-locked-icon">🔒</span>
+                <span class="card-locked-msg">Unlock all graphics</span>
+                <button class="btn-card-unlock">Unlock — $4.99</button>
+            `;
+            overlay.querySelector(".btn-card-unlock").addEventListener("click", async () => {
+                const data = await post("/api/create-checkout-onetime", {});
+                if (data.url) window.location.href = data.url;
+            });
+            card.appendChild(overlay);
+            card.querySelector(".btn-download").disabled = true;
+            card.querySelector(".btn-copy").disabled = true;
+        } else {
+            card.querySelector(".btn-download").addEventListener("click", () => {
+                const off = document.createElement("canvas");
+                drawGraphic(off, review, businessName);
+                downloadPNG(off, review.author);
+                gtag("event", "download_individual");
+            });
+
+            const confirm = card.querySelector(".copy-confirm");
+            card.querySelector(".btn-copy").addEventListener("click", async () => {
+                await navigator.clipboard.writeText(buildCaption(review, businessName));
+                confirm.classList.remove("hidden");
+                setTimeout(() => confirm.classList.add("hidden"), 2000);
+            });
+        }
     });
 }
 
