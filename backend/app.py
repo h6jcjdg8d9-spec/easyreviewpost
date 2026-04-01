@@ -232,10 +232,9 @@ def get_reviews():
             "relative_time": r.get("relative_time_description", ""),
         } for r in raw]
 
-    print(f"[reviews] total_fetched={len(reviews)}", flush=True)
-
+    biz_name = details.get("name", "")
     five_star = [r for r in reviews if r.get("text") and r.get("rating") == 5]
-    print(f"[reviews] after_5star_filter={len(five_star)}", flush=True)
+    print(f"[reviews] business={biz_name!r} total_fetched={len(reviews)} after_5star_filter={len(five_star)}", flush=True)
 
     if len(five_star) <= 1:
         four_star = [r for r in reviews if r.get("text") and r.get("rating") == 4]
