@@ -312,6 +312,15 @@ body {
     border: 1px solid #86efac;
     border-radius: var(--r-sm);
     min-width: 0;
+    opacity: 1;
+    transition: opacity 0.2s;
+}
+
+/* Keep in layout so it doesn't cause a shift when revealed */
+#biz-confirmed.hidden {
+    display: flex !important;
+    opacity: 0;
+    pointer-events: none;
 }
 
 .biz-check-icon {
