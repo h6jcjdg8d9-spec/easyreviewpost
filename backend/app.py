@@ -679,9 +679,10 @@ def _serpapi_store_cache(place_id, reviews):
         print(f"[serpapi] cache write error: {e}", flush=True)
 
 
-def _fetch_reviews_serpapi(place_id, max_reviews=40):
+def _fetch_reviews_serpapi(place_id):
     """
     Fetch reviews via SerpAPI google_maps_reviews engine, following pagination.
+    Stops early once 5 five-star reviews are found OR any review is older than 90 days.
     Results are cached in SQLite for 24 hours.
     Returns list of normalized review dicts or None on failure.
     """
@@ -689,8 +690,29 @@ def _fetch_reviews_serpapi(place_id, max_reviews=40):
     if cached is not None:
         return cached
 
+    cutoff = datetime.now(timezone.utc).timestamp() - 90 * 86400
+
+    def _ts(r):
+        iso = r.get("iso_date", "")
+        if iso:
+            try:
+                return int(datetime.fromisoformat(iso.replace("Z", "+00:00")).timestamp())
+            except Exception:
+                pass
+        return _approx_timestamp_from_relative(r.get("date", ""))
+
+    def _normalize(r):
+        return {
+            "author":        r.get("user", {}).get("name", "Anonymous"),
+            "rating":        r.get("rating", 5),
+            "text":          r.get("snippet", "").strip(),
+            "timestamp":     _ts(r),
+            "relative_time": r.get("date", ""),
+        }
+
     id_key = _serpapi_id_param(place_id)
     all_reviews = []
+    five_star_count = 0
     base_params = {
         "engine":   "google_maps_reviews",
         id_key:     place_id,
@@ -700,8 +722,9 @@ def _fetch_reviews_serpapi(place_id, max_reviews=40):
     }
     params = dict(base_params)
     page = 0
+    stop_reason = "exhausted"
 
-    while len(all_reviews) < max_reviews:
+    while True:
         try:
             resp = requests.get("https://serpapi.com/search", params=params, timeout=15)
             data = resp.json()
@@ -717,7 +740,22 @@ def _fetch_reviews_serpapi(place_id, max_reviews=40):
 
         raw = data.get("reviews", [])
         print(f"[serpapi] page={page} fetched={len(raw)}", flush=True)
-        all_reviews.extend(raw)
+
+        hit_cutoff = False
+        for r in raw:
+            norm = _normalize(r)
+            all_reviews.append(norm)
+            if norm["text"] and norm["rating"] == 5:
+                five_star_count += 1
+            if norm["timestamp"] < cutoff:
+                hit_cutoff = True
+
+        if five_star_count >= 5:
+            stop_reason = "5_five_star"
+            break
+        if hit_cutoff:
+            stop_reason = "90_day_cutoff"
+            break
 
         next_token = data.get("serpapi_pagination", {}).get("next_page_token")
         if not next_token or not raw:
@@ -726,27 +764,9 @@ def _fetch_reviews_serpapi(place_id, max_reviews=40):
         params = {**base_params, "next_page_token": next_token}
         page += 1
 
-    print(f"[serpapi] place_id={place_id!r} total={len(all_reviews)}", flush=True)
-
-    def _ts(r):
-        iso = r.get("iso_date", "")
-        if iso:
-            try:
-                return int(datetime.fromisoformat(iso.replace("Z", "+00:00")).timestamp())
-            except Exception:
-                pass
-        return _approx_timestamp_from_relative(r.get("date", ""))
-
-    reviews = [{
-        "author":        r.get("user", {}).get("name", "Anonymous"),
-        "rating":        r.get("rating", 5),
-        "text":          r.get("snippet", "").strip(),
-        "timestamp":     _ts(r),
-        "relative_time": r.get("date", ""),
-    } for r in all_reviews]
-
-    _serpapi_store_cache(place_id, reviews)
-    return reviews
+    print(f"[serpapi] place_id={place_id!r} total={len(all_reviews)} five_star={five_star_count} stop={stop_reason}", flush=True)
+    _serpapi_store_cache(place_id, all_reviews)
+    return all_reviews
 
 
 def _fetch_place_details(place_id, fields, **extra_params):
