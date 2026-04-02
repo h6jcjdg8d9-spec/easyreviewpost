@@ -123,6 +123,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    min-width: 0; /* prevent grid item from overflowing its track */
 }
 
 .step-label {
@@ -317,13 +318,14 @@ body {
     border: 1px solid #86efac;
     border-radius: var(--r-sm);
     min-width: 0;
-    width: 100%;
+    max-width: 100%;
     overflow: hidden;
     opacity: 1;
+    min-height: 30px; /* reserve full height when empty so grid row doesn't shift */
     transition: opacity 0.2s;
 }
 
-/* Keep in layout so it doesn't cause a shift when revealed */
+/* Keep in layout at the same size so grid row height never changes */
 #biz-confirmed.hidden {
     display: flex !important;
     opacity: 0;
@@ -342,6 +344,8 @@ body {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    flex-shrink: 1;
+    min-width: 0;
 }
 
 .biz-address {
