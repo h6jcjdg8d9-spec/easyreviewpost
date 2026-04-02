@@ -14,27 +14,31 @@ const PALETTES = [
 const STYLES = [
     {
         id: "classic", name: "Classic", desc: "Serif · timeless",
-        sampleFont: `bold italic 16px Georgia, serif`,
-        headingFn: (sz) => `bold italic ${sz}px Georgia, serif`,
-        bodyFn:    (sz) => `500 ${sz}px 'Helvetica Neue', Arial, sans-serif`,
+        sampleFont: `bold italic 16px 'Playfair Display', Georgia, serif`,
+        headingFn: (sz) => `bold italic ${sz}px 'Playfair Display', Georgia, serif`,
+        bodyFn:    (sz) => `400 ${sz}px 'Playfair Display', Georgia, serif`,
+        loadFonts: ["bold italic 1px 'Playfair Display'", "400 1px 'Playfair Display'"],
     },
     {
-        id: "modern", name: "Modern", desc: "Sans-serif · minimal",
-        sampleFont: `700 16px 'Helvetica Neue', Arial, sans-serif`,
-        headingFn: (sz) => `700 ${sz}px 'Helvetica Neue', Arial, sans-serif`,
-        bodyFn:    (sz) => `400 ${sz}px 'Helvetica Neue', Arial, sans-serif`,
+        id: "handwritten", name: "Handwritten", desc: "Script · personal",
+        sampleFont: `700 16px 'Caveat', cursive`,
+        headingFn: (sz) => `700 ${sz}px 'Caveat', cursive`,
+        bodyFn:    (sz) => `400 ${sz}px 'Caveat', cursive`,
+        loadFonts: ["700 1px 'Caveat'", "400 1px 'Caveat'"],
     },
     {
-        id: "bold", name: "Bold", desc: "Display · high contrast",
-        sampleFont: `900 16px 'Arial Black', Arial, sans-serif`,
-        headingFn: (sz) => `900 ${sz}px 'Arial Black', Arial, sans-serif`,
-        bodyFn:    (sz) => `600 ${sz}px 'Helvetica Neue', Arial, sans-serif`,
+        id: "slab", name: "Slab", desc: "Heavy · bold",
+        sampleFont: `700 16px 'Roboto Slab', serif`,
+        headingFn: (sz) => `700 ${sz}px 'Roboto Slab', serif`,
+        bodyFn:    (sz) => `400 ${sz}px 'Roboto Slab', serif`,
+        loadFonts: ["700 1px 'Roboto Slab'", "400 1px 'Roboto Slab'"],
     },
     {
-        id: "soft", name: "Soft", desc: "Rounded · warm feel",
-        sampleFont: `600 16px 'Trebuchet MS', Verdana, sans-serif`,
-        headingFn: (sz) => `600 ${sz}px 'Trebuchet MS', Verdana, sans-serif`,
-        bodyFn:    (sz) => `400 ${sz}px 'Trebuchet MS', Verdana, sans-serif`,
+        id: "condensed", name: "Condensed", desc: "Tight · high-impact",
+        sampleFont: `700 16px 'Barlow Condensed', sans-serif`,
+        headingFn: (sz) => `700 ${sz}px 'Barlow Condensed', sans-serif`,
+        bodyFn:    (sz) => `700 ${sz}px 'Barlow Condensed', sans-serif`,
+        loadFonts: ["700 1px 'Barlow Condensed'"],
     },
 ];
 
@@ -366,7 +370,9 @@ async function renderReviews(reviews, businessName) {
         const card   = reviewsGrid.lastElementChild;
         const canvas = card.querySelector(".preview-canvas");
 
-        requestAnimationFrame(() => drawGraphic(canvas, review, businessName));
+        const style = STYLES.find(s => s.id === state.styleId) || STYLES[0];
+        const loads = (style.loadFonts || []).map(f => document.fonts.load(f));
+        Promise.all(loads).then(() => drawGraphic(canvas, review, businessName));
 
         card.querySelector(".btn-download").addEventListener("click", () => {
             const off = document.createElement("canvas");
@@ -844,7 +850,8 @@ function initPanel() {
             card.classList.add("active");
             state.styleId = style.id;
             stepCompleted.step3 = true;
-            redrawAll();
+            const loads = (style.loadFonts || []).map(f => document.fonts.load(f));
+            Promise.all(loads).then(() => redrawAll());
         });
 
         fontList.appendChild(card);
