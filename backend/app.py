@@ -1,5 +1,6 @@
 import os
 import re
+import csv
 import json
 import sqlite3
 import secrets
@@ -26,6 +27,8 @@ PLACES_NEW_BASE = "https://places.googleapis.com/v1/places"
 _base = os.path.dirname(os.path.abspath(__file__))
 _sibling = os.path.normpath(os.path.join(_base, "..", "frontend"))
 FRONTEND_DIR = _sibling if os.path.exists(_sibling) else os.path.join(_base, "frontend")
+PROJECT_ROOT = os.path.normpath(os.path.join(_base, ".."))
+SEARCHES_CSV = os.path.join(PROJECT_ROOT, "searches.csv")
 
 # ── Stripe ─────────────────────────────────────────────────────────────────────
 stripe.api_key          = os.getenv("STRIPE_SECRET_KEY", "")
@@ -102,6 +105,11 @@ def debug():
 @app.route("/")
 def index():
     return send_from_directory(FRONTEND_DIR, "index.html")
+
+
+@app.route("/favicon.ico")
+def favicon():
+    return send_from_directory(FRONTEND_DIR, "favicon.svg", mimetype="image/svg+xml")
 
 
 @app.route("/<path:filename>")
@@ -221,7 +229,11 @@ def get_reviews():
             return jsonify({"error": "Could not fetch business details."}), 502
 
     # Reviews — prefer SerpAPI, fall back to legacy Places API
-    reviews = _fetch_reviews_serpapi(place_id) if SERPAPI_KEY else None
+    serpapi_biz_name = ""
+    if SERPAPI_KEY:
+        reviews, serpapi_biz_name = _fetch_reviews_serpapi(place_id)
+    else:
+        reviews = None
 
     if reviews is None:
         legacy = _fetch_place_details(
@@ -240,7 +252,8 @@ def get_reviews():
             "relative_time": r.get("relative_time_description", ""),
         } for r in raw]
 
-    biz_name = details.get("name", "")
+    biz_name = details.get("name", "") or serpapi_biz_name
+    _log_search(place_id, biz_name)
     five_star = [r for r in reviews if r.get("text") and r.get("rating") == 5]
 
     if len(five_star) <= 1:
@@ -679,6 +692,16 @@ def _serpapi_store_cache(place_id, reviews):
         print(f"[serpapi] cache write error: {e}", flush=True)
 
 
+def _log_search(place_id, business_name):
+    """Append a row to searches.csv; create with header if the file is new."""
+    write_header = not os.path.exists(SEARCHES_CSV)
+    with open(SEARCHES_CSV, "a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        if write_header:
+            writer.writerow(["utc_timestamp", "place_id", "business_name"])
+        writer.writerow([datetime.now(timezone.utc).isoformat(), place_id, business_name])
+
+
 def _fetch_reviews_serpapi(place_id):
     """
     Fetch reviews via SerpAPI google_maps_reviews engine, following pagination.
@@ -688,7 +711,7 @@ def _fetch_reviews_serpapi(place_id):
     """
     cached = _serpapi_cached(place_id)
     if cached is not None:
-        return cached
+        return cached, ""
 
     cutoff = datetime.now(timezone.utc).timestamp() - 90 * 86400
 
@@ -712,6 +735,7 @@ def _fetch_reviews_serpapi(place_id):
 
     id_key = _serpapi_id_param(place_id)
     all_reviews = []
+    serpapi_biz_name = ""
     five_star_count = 0
     base_params = {
         "engine":   "google_maps_reviews",
@@ -732,11 +756,23 @@ def _fetch_reviews_serpapi(place_id):
             print(f"[serpapi] request failed (page {page}): {e}", flush=True)
             break
 
+        if page == 0:
+            print(f"[serpapi] top-level keys: {list(data.keys())}", flush=True)
+
         if "error" in data:
             print(f"[serpapi] error (page {page}): {data['error']}", flush=True)
             if page == 0:
-                return None
+                return None, ""
             break
+
+        if page == 0:
+            place_info = data.get("place_info") or {}
+            serpapi_biz_name = (
+                place_info.get("title")
+                or place_info.get("name")
+                or ""
+            )
+            print(f"[serpapi] place_info.title={place_info.get('title')!r}", flush=True)
 
         raw = data.get("reviews", [])
         print(f"[serpapi] page={page} fetched={len(raw)}", flush=True)
@@ -766,7 +802,7 @@ def _fetch_reviews_serpapi(place_id):
 
     print(f"[serpapi] place_id={place_id!r} total={len(all_reviews)} five_star={five_star_count} stop={stop_reason}", flush=True)
     _serpapi_store_cache(place_id, all_reviews)
-    return all_reviews
+    return all_reviews, serpapi_biz_name
 
 
 def _fetch_place_details(place_id, fields, **extra_params):
