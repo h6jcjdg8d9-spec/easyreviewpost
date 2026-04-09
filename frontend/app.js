@@ -63,7 +63,7 @@ const PLATFORM_CONFIGS = {
         divR: 0.778, authorR: 0.833, attrR: 0.884, bizR: 0.951,
     },
     gpost: {
-        label: "Google Post", size: "720 × 720",
+        label: "Business Post", size: "720 × 720",
         w: 720,  h: 720,
         padR: 0.0815, starsR: 0.195, textR: 0.290,
         divR: 0.778, authorR: 0.833, attrR: 0.884, bizR: 0.951,
@@ -690,7 +690,7 @@ function buildCaption(review, businessName) {
         "",
         businessName ? `\uD83D\uDCCD ${businessName}` : "",
         "",
-        "#googlereviews #5starreview #clientlove #testimonial",
+        "#customerreviews #5starreview #clientlove #testimonial",
     ].filter((l, i, arr) => !(l === "" && (!arr[i - 1] || arr[i - 1] === ""))).join("\n").trim();
 }
 
