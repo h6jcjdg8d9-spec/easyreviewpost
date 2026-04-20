@@ -77,10 +77,6 @@ const PLATFORM_ICONS = {
     gpost:     `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>`,
 };
 
-// ── Google G logo (preloaded SVG) ─────────────────────────────────────────────
-const GOOGLE_G_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>`;
-const GOOGLE_G_IMG = new Image();
-GOOGLE_G_IMG.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(GOOGLE_G_SVG);
 
 // ── Excerpt cache + AI fetch ───────────────────────────────────────────────────
 const excerptCache = new Map();
@@ -506,28 +502,7 @@ function drawGraphic(canvas, review, businessName) {
     const iw      = cardW - padCard * 2;
     const ibot    = cardY + cardH - padCard;
 
-    // 4. Google G — 16px from top-right corner of card
-    const iconSz     = Math.round(ref * 0.033);
-    const iconOffset = Math.round(ref * 0.030);
-    const iconX = cardX + cardW - iconOffset - iconSz;
-    const iconY = cardY + iconOffset;
-    if (GOOGLE_G_IMG.complete && GOOGLE_G_IMG.naturalWidth > 0) {
-        ctx.drawImage(GOOGLE_G_IMG, iconX, iconY, iconSz, iconSz);
-    } else {
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(iconX + iconSz / 2, iconY + iconSz / 2, iconSz / 2, 0, Math.PI * 2);
-        ctx.fillStyle = "#4285F4";
-        ctx.fill();
-        ctx.font = `700 ${Math.round(iconSz * 0.6)}px Arial, sans-serif`;
-        ctx.fillStyle = "#fff";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("G", iconX + iconSz / 2, iconY + iconSz / 2);
-        ctx.restore();
-    }
-
-    // 5. Metadata sizes and gaps (all ref-scaled)
+    // 4. Metadata sizes and gaps (all ref-scaled)
     const starSz = Math.round(ref * 0.037);  // ~20px display
     const nameSz = Math.round(ref * 0.026);  // ~14px display
     const dateSz = Math.round(ref * 0.022);  // ~12px display
@@ -600,7 +575,7 @@ function drawGraphic(canvas, review, businessName) {
 
     // 7. Quote — hero text, centered in upper zone (iy → divY - gapQ)
     const quoteAvailH = divY - gapQ - iy;
-    const quoteW      = iw - iconSz - Math.round(padCard * 0.5); // clear Google G
+    const quoteW      = iw;
     const excerpt     = review._excerpt || extractExcerpt(review.text, 3);
     const quoteStr    = `\u201C${excerpt}\u201D`;
 

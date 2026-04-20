@@ -2,6 +2,7 @@ import os
 import re
 import csv
 import json
+from supabase import create_client
 import sqlite3
 import secrets
 import requests
@@ -29,6 +30,10 @@ _sibling = os.path.normpath(os.path.join(_base, "..", "frontend"))
 FRONTEND_DIR = _sibling if os.path.exists(_sibling) else os.path.join(_base, "frontend")
 PROJECT_ROOT = os.path.normpath(os.path.join(_base, ".."))
 SEARCHES_CSV = os.path.join(PROJECT_ROOT, "searches.csv")
+
+SUPABASE_URL = os.getenv("SUPABASE_URL", "https://cmuhqsswroohyhwzlsdm.supabase.co")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
+_supabase = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_KEY else None
 
 # ── Stripe ─────────────────────────────────────────────────────────────────────
 stripe.api_key          = os.getenv("STRIPE_SECRET_KEY", "")
@@ -693,13 +698,22 @@ def _serpapi_store_cache(place_id, reviews):
 
 
 def _log_search(place_id, business_name):
-    """Append a row to searches.csv; create with header if the file is new."""
-    write_header = not os.path.exists(SEARCHES_CSV)
-    with open(SEARCHES_CSV, "a", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        if write_header:
-            writer.writerow(["utc_timestamp", "place_id", "business_name"])
-        writer.writerow([datetime.now(timezone.utc).isoformat(), place_id, business_name])
+    if _supabase:
+        try:
+            _supabase.table("searches").insert({
+                "utc_timestamp": datetime.now(timezone.utc).isoformat(),
+                "place_id": place_id,
+                "business_name": business_name,
+            }).execute()
+        except Exception as e:
+            print(f"[supabase] log error: {e}", flush=True)
+    else:
+        write_header = not os.path.exists(SEARCHES_CSV)
+        with open(SEARCHES_CSV, "a", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            if write_header:
+                writer.writerow(["utc_timestamp", "place_id", "business_name"])
+            writer.writerow([datetime.now(timezone.utc).isoformat(), place_id, business_name])
 
 
 def _fetch_reviews_serpapi(place_id):
