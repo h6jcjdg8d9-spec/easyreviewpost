@@ -29,7 +29,8 @@ _base = os.path.dirname(os.path.abspath(__file__))
 _sibling = os.path.normpath(os.path.join(_base, "..", "frontend"))
 FRONTEND_DIR = _sibling if os.path.exists(_sibling) else os.path.join(_base, "frontend")
 PROJECT_ROOT = os.path.normpath(os.path.join(_base, ".."))
-SEARCHES_CSV = os.path.join(PROJECT_ROOT, "searches.csv")
+SEARCHES_CSV      = os.path.join(PROJECT_ROOT, "searches.csv")
+EMAIL_GRAPHICS_CSV = os.path.join(PROJECT_ROOT, "email_graphics.csv")
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "https://cmuhqsswroohyhwzlsdm.supabase.co")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
@@ -313,6 +314,7 @@ def email_graphics():
     try:
         from mailer import send_review_email
         send_review_email(to_email, business_name, reviews_with_images)
+        _log_email_graphics(to_email, business_name, len(reviews_with_images))
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -714,6 +716,26 @@ def _log_search(place_id, business_name):
             if write_header:
                 writer.writerow(["utc_timestamp", "place_id", "business_name"])
             writer.writerow([datetime.now(timezone.utc).isoformat(), place_id, business_name])
+
+
+def _log_email_graphics(to_email, business_name, graphic_count):
+    if _supabase:
+        try:
+            _supabase.table("email_graphics").insert({
+                "utc_timestamp":  datetime.now(timezone.utc).isoformat(),
+                "email":          to_email,
+                "business_name":  business_name,
+                "graphic_count":  graphic_count,
+            }).execute()
+        except Exception as e:
+            print(f"[supabase] email_graphics log error: {e}", flush=True)
+    else:
+        write_header = not os.path.exists(EMAIL_GRAPHICS_CSV)
+        with open(EMAIL_GRAPHICS_CSV, "a", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            if write_header:
+                writer.writerow(["utc_timestamp", "email", "business_name", "graphic_count"])
+            writer.writerow([datetime.now(timezone.utc).isoformat(), to_email, business_name, graphic_count])
 
 
 def _fetch_reviews_serpapi(place_id):
